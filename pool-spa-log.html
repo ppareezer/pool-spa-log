@@ -1,0 +1,956 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Surfers Chalet — Pool &amp; Spa Log</title>
+<style>
+  :root{
+    --ink:#1c2b26;
+    --ink-soft:#4c5d57;
+    --ink-faint:#8a9992;
+    --paper:#f6f4ee;
+    --card:#ffffff;
+    --line:#dcd8cb;
+    --pool:#0f6e56;
+    --pool-soft:#e1f5ee;
+    --spa:#993c1d;
+    --spa-soft:#faece7;
+    --bad:#a32d2d;
+    --bad-soft:#fcebeb;
+    --good:#3b6d11;
+    --good-soft:#eaf3de;
+    --radius:14px;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    background:var(--paper);
+    color:var(--ink);
+    padding-bottom:100px;
+  }
+  header{
+    padding:20px 18px 14px;
+    background:var(--paper);
+    position:sticky;
+    top:0;
+    z-index:5;
+    border-bottom:1px solid var(--line);
+  }
+  header .site{
+    font-size:11px;
+    letter-spacing:.04em;
+    color:var(--ink-faint);
+    margin-bottom:2px;
+  }
+  header h1{
+    margin:0;
+    font-size:21px;
+    font-weight:600;
+    font-family:Georgia,"Times New Roman",serif;
+  }
+  .tabs{
+    display:flex;
+    gap:8px;
+    margin-top:14px;
+  }
+  .tab{
+    flex:1;
+    padding:10px 0;
+    text-align:center;
+    border-radius:10px;
+    border:1px solid var(--line);
+    background:var(--card);
+    font-size:14px;
+    font-weight:600;
+    color:var(--ink-soft);
+  }
+  .tab.active.pool{ background:var(--pool); color:#fff; border-color:var(--pool);}
+  .tab.active.spa{ background:var(--spa); color:#fff; border-color:var(--spa);}
+
+  main{ padding:16px; max-width:520px; margin:0 auto; }
+
+  .card{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:16px;
+    margin-bottom:14px;
+  }
+  .card h2{
+    font-size:13px;
+    text-transform:uppercase;
+    letter-spacing:.05em;
+    color:var(--ink-faint);
+    margin:0 0 12px;
+    font-weight:600;
+  }
+  .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .field{ margin-bottom:12px; }
+  .field label{
+    display:block;
+    font-size:12.5px;
+    color:var(--ink-soft);
+    margin-bottom:4px;
+  }
+  .field .range{
+    font-size:11px;
+    color:var(--ink-faint);
+    margin-left:6px;
+  }
+  input, select, textarea{
+    width:100%;
+    border:1px solid var(--line);
+    border-radius:9px;
+    padding:9px 10px;
+    font-size:15px;
+    background:#fdfcf9;
+    color:var(--ink);
+    font-family:inherit;
+  }
+  input:focus, select:focus, textarea:focus{
+    outline:none;
+    border-color:var(--ink-soft);
+  }
+  textarea{ resize:vertical; min-height:44px; }
+  .hint-msg{
+    font-size:11.5px;
+    color:var(--bad);
+    margin-top:3px;
+    min-height:14px;
+  }
+
+  .save-btn{
+    width:100%;
+    padding:13px;
+    border:none;
+    border-radius:11px;
+    font-size:15px;
+    font-weight:600;
+    color:#fff;
+    margin-top:4px;
+  }
+  .save-btn.pool{ background:var(--pool); }
+  .save-btn.spa{ background:var(--spa); }
+
+  .error{ font-size:12.5px; color:var(--bad); margin-top:4px; display:none; }
+
+  .entries-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:10px;
+  }
+  .entries-head h2{ margin:0; }
+  .export-btn{
+    font-size:12px;
+    color:var(--ink-soft);
+    background:none;
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:6px 10px;
+  }
+
+  .entry{
+    border:1px solid var(--line);
+    border-radius:11px;
+    padding:12px;
+    margin-bottom:10px;
+  }
+  .entry-top{
+    display:flex;
+    justify-content:space-between;
+    align-items:baseline;
+    margin-bottom:8px;
+  }
+  .entry-date{ font-weight:600; font-size:14.5px; }
+  .entry-time{ font-size:12.5px; color:var(--ink-faint); }
+  .badge{
+    display:inline-block;
+    font-size:11px;
+    font-weight:600;
+    padding:2px 8px;
+    border-radius:20px;
+    margin-left:6px;
+  }
+  .badge.good{ background:var(--good-soft); color:var(--good); }
+  .badge.bad{ background:var(--bad-soft); color:var(--bad); }
+
+  .readings{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:6px;
+    font-size:12.5px;
+    margin-bottom:6px;
+  }
+  .readings div{
+    background:var(--paper);
+    border-radius:7px;
+    padding:5px 6px;
+  }
+  .readings .rlabel{ color:var(--ink-faint); font-size:10.5px; display:block; }
+  .readings .rval{ font-weight:600; }
+  .readings .rval.flag{ color:var(--bad); }
+
+  .entry-note{ font-size:12.5px; color:var(--ink-soft); margin-top:4px; }
+  .entry-actions{ text-align:right; margin-top:6px; }
+  .entry-actions button{
+    background:none; border:none; font-size:12px; color:var(--ink-faint); padding:4px 6px;
+  }
+
+  .empty{
+    text-align:center;
+    padding:30px 10px;
+    color:var(--ink-faint);
+    font-size:13.5px;
+  }
+  .scan-card p.hint{
+    font-size:12.5px;
+    color:var(--ink-soft);
+    margin:0 0 12px;
+    line-height:1.5;
+  }
+  .scan-buttons{
+    display:flex;
+    gap:8px;
+    margin-bottom:12px;
+  }
+  .scan-mode-btn{
+    flex:1;
+    text-align:center;
+    padding:11px 0;
+    border:1px dashed var(--line);
+    border-radius:10px;
+    font-size:13.5px;
+    color:var(--ink-soft);
+    font-weight:600;
+    cursor:pointer;
+    background:#fdfcf9;
+  }
+  .scan-buttons input[type=file]{ display:none; }
+
+  .guide-wrap{
+    position:relative;
+    width:100%;
+    aspect-ratio:4/3;
+    border-radius:10px;
+    overflow:hidden;
+    margin-bottom:10px;
+    background:#111;
+    display:none;
+  }
+  .guide-wrap.show{ display:block; }
+  #liveVideo, #stripCanvas{
+    position:absolute;
+    top:0; left:0;
+    width:100%; height:100%;
+    object-fit:cover;
+    display:none;
+  }
+  #liveVideo.show, #stripCanvas.show{ display:block; }
+
+  .guide-overlay{
+    position:absolute;
+    inset:0;
+    pointer-events:none;
+  }
+  .guide-overlay .col-label{
+    position:absolute;
+    top:4px;
+    font-size:11px;
+    font-weight:700;
+    color:#fff;
+    background:rgba(0,0,0,.45);
+    padding:2px 8px;
+    border-radius:6px;
+    transform:translateX(-50%);
+  }
+  .guide-overlay .divider{
+    position:absolute;
+    top:0; bottom:0; left:50%;
+    width:1px;
+    background:rgba(255,255,255,.35);
+  }
+  .guide-dot{
+    position:absolute;
+    width:32px;
+    height:32px;
+    border:2px solid rgba(255,255,255,.9);
+    border-radius:50%;
+    transform:translate(-50%,-50%);
+    box-shadow:0 0 0 2px rgba(0,0,0,.35);
+  }
+  .guide-dot::before, .guide-dot::after{
+    content:'';
+    position:absolute;
+    background:rgba(255,255,255,.9);
+  }
+  .guide-dot::before{ width:2px; height:12px; left:50%; top:50%; transform:translate(-50%,-50%); }
+  .guide-dot::after{ width:12px; height:2px; left:50%; top:50%; transform:translate(-50%,-50%); }
+  .guide-dot .dot-label{
+    position:absolute;
+    left:38px;
+    top:50%;
+    transform:translateY(-50%);
+    font-size:9.5px;
+    font-weight:700;
+    color:#fff;
+    background:rgba(0,0,0,.5);
+    padding:1px 5px;
+    border-radius:4px;
+    white-space:nowrap;
+  }
+  .guide-dot.pool .dot-label{ left:auto; right:38px; }
+
+  .scan-controls{
+    display:flex;
+    gap:8px;
+    margin-bottom:10px;
+  }
+  .scan-capture-btn{
+    flex:2;
+    padding:11px;
+    border-radius:10px;
+    border:none;
+    background:var(--ink);
+    color:#fff;
+    font-size:14px;
+    font-weight:700;
+  }
+  .scan-reset{
+    flex:1;
+    font-size:12.5px;
+    color:var(--ink-soft);
+    background:none;
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:11px 4px;
+  }
+  .pending-panels{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:4px; }
+  .pending-panel{
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:10px;
+  }
+  .pending-panel h3{
+    margin:0 0 8px;
+    font-size:12px;
+    text-transform:uppercase;
+    letter-spacing:.04em;
+  }
+  .pending-panel.spa h3{ color:var(--spa); }
+  .pending-panel.pool h3{ color:var(--pool); }
+  .pending-row{
+    display:flex;
+    justify-content:space-between;
+    font-size:12.5px;
+    margin-bottom:5px;
+    color:var(--ink-soft);
+  }
+  .pending-row b{ color:var(--ink); }
+  .fill-btn{
+    width:100%;
+    margin-top:8px;
+    padding:8px;
+    font-size:12.5px;
+    font-weight:600;
+    border-radius:8px;
+    border:1px solid var(--line);
+    background:var(--paper);
+  }
+  .fill-btn.spa{ color:var(--spa); }
+  .fill-btn.pool{ color:var(--pool); }
+  .scan-note{
+    font-size:11.5px;
+    color:var(--ink-faint);
+    margin-top:8px;
+    line-height:1.5;
+  }
+
+  .toast{
+    position:fixed;
+    bottom:20px;
+    left:50%;
+    transform:translateX(-50%);
+    background:var(--ink);
+    color:#fff;
+    padding:10px 18px;
+    border-radius:20px;
+    font-size:13px;
+    opacity:0;
+    pointer-events:none;
+    transition:opacity .25s;
+    z-index:20;
+  }
+  .toast.show{ opacity:1; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="site">Surfers Chalet · 6-8 Aubrey Street, Surfers Paradise</div>
+  <h1>Pool &amp; spa test log</h1>
+  <div class="tabs">
+    <div class="tab active spa" id="tabSpa" onclick="setMode('spa')">Spa</div>
+    <div class="tab pool" id="tabPool" onclick="setMode('pool')">Pool</div>
+  </div>
+</header>
+
+<main>
+
+  <div class="card scan-card">
+    <h2>Scan test strip</h2>
+    <p class="hint">Line the strips up so spa (left) and pool (right) each sit under their six markers, in pad order top to bottom: hardness, total Cl/Br, free chlorine, pH, alkalinity, CYA. Then capture once — no tapping needed. <strong>Viewing this inside the Claude app?</strong> Use "Upload photo" — it opens your phone's camera directly. "Use camera" (live view) needs a real browser tab.</p>
+
+    <div class="scan-buttons" id="scanButtons">
+      <button class="scan-mode-btn" onclick="startLiveScan()">Use camera</button>
+      <label class="scan-mode-btn" for="stripPhoto">Upload photo</label>
+      <input type="file" id="stripPhoto" accept="image/*" capture="environment" onchange="handlePhoto(event)">
+    </div>
+
+    <div class="guide-wrap" id="guideWrap">
+      <video id="liveVideo" playsinline muted></video>
+      <canvas id="stripCanvas"></canvas>
+      <div class="guide-overlay" id="guideOverlay"></div>
+    </div>
+
+    <div class="scan-controls" id="scanControls" style="display:none;">
+      <button class="scan-capture-btn" id="captureBtn" onclick="captureGrid()">Capture</button>
+      <button class="scan-reset" onclick="resetScan()">Retake / clear</button>
+    </div>
+
+    <div class="pending-panels" id="pendingPanels" style="display:none;">
+      <div class="pending-panel spa">
+        <h3>Spa (left)</h3>
+        <div id="spaPending"></div>
+        <button class="fill-btn spa" onclick="fillForm('spa')">Fill spa form</button>
+      </div>
+      <div class="pending-panel pool">
+        <h3>Pool (right)</h3>
+        <div id="poolPending"></div>
+        <button class="fill-btn pool" onclick="fillForm('pool')">Fill pool form</button>
+      </div>
+    </div>
+    <p class="scan-note">Estimates are based on typical strip chart colors and can shift with lighting — always glance at the filled-in numbers before saving.</p>
+  </div>
+
+  <div class="card">
+    <h2>New reading</h2>
+
+    <div class="grid2">
+      <div class="field">
+        <label>Date</label>
+        <input type="date" id="fDate">
+      </div>
+      <div class="field">
+        <label>Time</label>
+        <input type="time" id="fTime">
+      </div>
+    </div>
+
+    <div class="grid2">
+      <div class="field">
+        <label>Free chlorine <span class="range" id="freeRangeLabel">(1.0–3.5)</span></label>
+        <input type="number" step="0.1" id="fChlorine" placeholder="e.g. 2.0" oninput="showHint('fChlorine','chlorine')">
+        <div class="hint-msg" id="hintfChlorine"></div>
+      </div>
+      <div class="field">
+        <label>Total chlorine/bromine <span class="range">(2–10, 5 ideal)</span></label>
+        <input type="number" step="0.1" id="fCombined" placeholder="e.g. 3.0" oninput="showHint('fCombined','total')">
+        <div class="hint-msg" id="hintfCombined"></div>
+      </div>
+    </div>
+
+    <div class="grid2">
+      <div class="field">
+        <label>pH <span class="range">(7.2–7.8)</span></label>
+        <input type="number" step="0.1" id="fPh" placeholder="e.g. 7.4" oninput="showHint('fPh','ph')">
+        <div class="hint-msg" id="hintfPh"></div>
+      </div>
+      <div class="field">
+        <label>Total alkalinity <span class="range">(80–120)</span></label>
+        <input type="number" step="1" id="fAlk" placeholder="e.g. 100" oninput="showHint('fAlk','alk')">
+        <div class="hint-msg" id="hintfAlk"></div>
+      </div>
+    </div>
+
+    <div class="grid2">
+      <div class="field">
+        <label>Total hardness <span class="range">(250–500)</span></label>
+        <input type="number" step="10" id="fHardness" placeholder="e.g. 300" oninput="showHint('fHardness','hardness')">
+        <div class="hint-msg" id="hintfHardness"></div>
+      </div>
+      <div class="field">
+        <label>Cyanuric acid <span class="range">(30–100, 30–50 ideal)</span></label>
+        <input type="number" step="5" id="fCya" placeholder="e.g. 40" oninput="showHint('fCya','cya')">
+        <div class="hint-msg" id="hintfCya"></div>
+      </div>
+    </div>
+
+    <div class="grid2">
+      <div class="field">
+        <label>Clarity (%)</label>
+        <input type="number" step="1" id="fClarity" placeholder="100">
+      </div>
+      <div class="field">
+        <label>Water temp (°C)</label>
+        <input type="number" step="0.5" id="fTemp" placeholder="e.g. 28">
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Corrective action taken <span class="range">(optional)</span></label>
+      <input type="text" id="fAction" placeholder="e.g. Added chlorine, backwashed">
+    </div>
+
+    <div class="field">
+      <label>Maintenance / comments <span class="range">(optional)</span></label>
+      <textarea id="fComments" placeholder="e.g. Vacuumed, filter checked"></textarea>
+    </div>
+
+    <div class="field">
+      <label>Sign (initials)</label>
+      <input type="text" id="fSign" placeholder="e.g. MK" style="max-width:120px;">
+    </div>
+
+    <div class="error" id="formError">Please fill in free chlorine, pH and initials before saving.</div>
+
+    <button class="save-btn pool" id="saveBtn" onclick="saveEntry()">Save reading</button>
+  </div>
+
+  <div class="card">
+    <div class="entries-head">
+      <h2 id="entriesTitle">Pool log</h2>
+      <button class="export-btn" onclick="exportCSV()">Export CSV</button>
+    </div>
+    <div id="entriesList"></div>
+  </div>
+
+</main>
+
+<div class="toast" id="toast">Saved</div>
+
+<script>
+let mode = 'spa';
+let entries = { pool: [], spa: [] };
+function todayDate(){
+  const d = new Date();
+  return d.toISOString().slice(0,10);
+}
+function nowTime(){
+  const d = new Date();
+  return d.toTimeString().slice(0,5);
+}
+
+const PALETTES = {
+  chlorine: { label:'Free chlorine', unit:'ppm', points:[
+    [0,'#f5eddc'],[0.5,'#ecd9b0'],[1,'#e0bfae'],[3,'#c9a0d0'],[5,'#a35fc0'],[10,'#7a3aa0'],[20,'#5a2483']
+  ]},
+  total: { label:'Total chlorine/bromine', unit:'ppm', points:[
+    [0,'#f2eeb0'],[0.5,'#eef0a0'],[1,'#dbe89c'],[3,'#b8e0a0'],[5,'#8fd2a0'],[10,'#5fc0a0'],[20,'#3daa96']
+  ]},
+  ph: { label:'pH', unit:'', points:[
+    [6.2,'#e08030'],[6.8,'#d9662e'],[7.2,'#cf4a2e'],[7.8,'#c03535'],[8.4,'#b8203a']
+  ]},
+  alk: { label:'Total alkalinity', unit:'ppm', points:[
+    [0,'#e8b23a'],[40,'#c9c04a'],[80,'#a3b25a'],[120,'#8aa48a'],[180,'#5f8f8a'],[240,'#4a7a90']
+  ]},
+  hardness: { label:'Total hardness', unit:'ppm', points:[
+    [0,'#2e3a8c'],[100,'#4a4a9c'],[250,'#6b3f96'],[500,'#8a3f92'],[1000,'#a13c86']
+  ]},
+  cya: { label:'Cyanuric acid', unit:'ppm', points:[
+    [0,'#e0722e'],[40,'#c85a2e'],[100,'#b0304a'],[150,'#8a2a5a'],[300,'#5a2a6a']
+  ]}
+};
+
+const RANGES = {
+  chlorine: { pool:[1,3.5], spa:[3.5,5] },
+  total: [2,10],
+  ph: [7.2,7.8],
+  alk: [80,120],
+  hardness: [250,500],
+  cya: [30,100]
+};
+
+const ACTIONS = {
+  chlorine: { low:'Add chlorine to raise free chlorine', high:'Stop dosing — let chlorine dissipate or dilute' },
+  total: { low:'Shock dose / add chlorine', high:'Stop dosing — let levels drop before retesting' },
+  ph: { low:'Add pH increaser (soda ash)', high:'Add pH decreaser (dry acid / muriatic acid)' },
+  alk: { low:'Add alkalinity increaser (sodium bicarbonate)', high:'Add pH decreaser and aerate to bring alkalinity down' },
+  hardness: { low:'Add calcium hardness increaser', high:'Partially drain and refill with fresh water' },
+  cya: { low:'Add stabiliser/conditioner (cyanuric acid)', high:'Partially drain and refill to dilute' }
+};
+
+function suggestAction(key, value, side){
+  if(value === '' || value === null || isNaN(value)) return null;
+  const v = parseFloat(value);
+  const r = key === 'chlorine' ? RANGES.chlorine[side || 'pool'] : RANGES[key];
+  if(!r) return null;
+  if(v < r[0]) return ACTIONS[key].low;
+  if(v > r[1]) return ACTIONS[key].high;
+  return null;
+}
+
+let pending = { spa:{}, pool:{} };
+
+function hexToRgb(hex){
+  const n = parseInt(hex.slice(1),16);
+  return [ (n>>16)&255, (n>>8)&255, n&255 ];
+}
+
+function nearestMatch(paletteKey, rgb){
+  const points = PALETTES[paletteKey].points;
+  let best = null, bestDist = Infinity;
+  points.forEach(p=>{
+    const pr = hexToRgb(p[1]);
+    const d = Math.pow(pr[0]-rgb[0],2)+Math.pow(pr[1]-rgb[1],2)+Math.pow(pr[2]-rgb[2],2);
+    if(d < bestDist){ bestDist = d; best = p[0]; }
+  });
+  return best;
+}
+
+// Known pad order, top to bottom, same for both strips
+const PAD_ORDER = ['hardness','total','chlorine','ph','alk','cya'];
+const PAD_ABBR = { hardness:'HD', total:'Cl/Br', chlorine:'FCl', ph:'pH', alk:'ALK', cya:'CYA' };
+const ROW_Y = [16, 31, 46, 61, 76, 91]; // % down the frame for each of the 6 pads
+const COL_X = { spa: 28, pool: 72 };    // % across the frame for each strip
+
+let mediaStream = null;
+
+function buildGuideOverlay(){
+  const overlay = document.getElementById('guideOverlay');
+  let html = `<div class="col-label" style="left:${COL_X.spa}%;">SPA</div>
+              <div class="col-label" style="left:${COL_X.pool}%;">POOL</div>
+              <div class="divider"></div>`;
+  ['spa','pool'].forEach(side=>{
+    PAD_ORDER.forEach((key, i)=>{
+      html += `<div class="guide-dot ${side}" style="left:${COL_X[side]}%; top:${ROW_Y[i]}%;">
+                 <span class="dot-label">${PAD_ABBR[key]}</span>
+               </div>`;
+    });
+  });
+  overlay.innerHTML = html;
+}
+buildGuideOverlay();
+
+async function startLiveScan(){
+  resetScan();
+  try{
+    mediaStream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:'environment' } });
+    const video = document.getElementById('liveVideo');
+    video.srcObject = mediaStream;
+    await video.play();
+    document.getElementById('guideWrap').classList.add('show');
+    video.classList.add('show');
+    document.getElementById('scanControls').style.display = 'flex';
+  }catch(e){
+    showToast('Camera blocked here — use "Upload photo" instead');
+  }
+}
+
+function handlePhoto(evt){
+  const file = evt.target.files[0];
+  if(!file) return;
+  resetScan();
+  const reader = new FileReader();
+  reader.onload = function(e){
+    const img = new Image();
+    img.onload = function(){
+      const canvas = document.getElementById('stripCanvas');
+      canvas.width = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0);
+      document.getElementById('guideWrap').classList.add('show');
+      canvas.classList.add('show');
+      document.getElementById('scanControls').style.display = 'flex';
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function captureGrid(){
+  const canvas = document.getElementById('stripCanvas');
+  const video = document.getElementById('liveVideo');
+
+  // If the live video is running, freeze the current frame onto the canvas
+  if(mediaStream && video.classList.contains('show')){
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    canvas.getContext('2d').drawImage(video, 0, 0);
+    video.classList.remove('show');
+    canvas.classList.add('show');
+    stopStream();
+  }
+
+  if(!canvas.width){
+    showToast('Nothing to capture yet');
+    return;
+  }
+
+  const ctx = canvas.getContext('2d');
+  pending = { spa:{}, pool:{} };
+
+  ['spa','pool'].forEach(side=>{
+    PAD_ORDER.forEach((key, i)=>{
+      const x = Math.round(canvas.width * COL_X[side] / 100);
+      const y = Math.round(canvas.height * ROW_Y[i] / 100);
+      const size = Math.max(4, Math.round(canvas.width * 0.02));
+      const sx = Math.max(0, x - size), sy = Math.max(0, y - size);
+      const sw = Math.min(size*2, canvas.width - sx), sh = Math.min(size*2, canvas.height - sy);
+      const imgData = ctx.getImageData(sx, sy, sw, sh);
+      let r=0,g=0,b=0,count=0;
+      for(let p=0;p<imgData.data.length;p+=4){
+        r += imgData.data[p]; g += imgData.data[p+1]; b += imgData.data[p+2]; count++;
+      }
+      r = Math.round(r/count); g = Math.round(g/count); b = Math.round(b/count);
+      pending[side][key] = nearestMatch(key, [r,g,b]);
+    });
+  });
+
+  document.getElementById('pendingPanels').style.display = 'grid';
+  renderPending();
+  showToast('Captured — check both panels before filling');
+}
+
+function stopStream(){
+  if(mediaStream){
+    mediaStream.getTracks().forEach(t => t.stop());
+    mediaStream = null;
+  }
+}
+
+function renderPending(){
+  ['spa','pool'].forEach(side=>{
+    const el = document.getElementById(side + 'Pending');
+    const keys = Object.keys(pending[side]);
+    if(!keys.length){
+      el.innerHTML = '<div class="pending-row" style="color:var(--ink-faint);">Not captured yet</div>';
+      return;
+    }
+    el.innerHTML = PAD_ORDER.filter(k => keys.includes(k)).map(k=>{
+      const p = PALETTES[k];
+      return `<div class="pending-row"><span>${p.label}</span><b>${pending[side][k]}${p.unit ? ' '+p.unit : ''}</b></div>`;
+    }).join('');
+  });
+}
+
+function fillForm(side){
+  const map = { chlorine:'fChlorine', total:'fCombined', ph:'fPh', alk:'fAlk', hardness:'fHardness', cya:'fCya' };
+  if(mode !== side) setMode(side);
+  Object.keys(pending[side]).forEach(k=>{
+    if(map[k]){
+      document.getElementById(map[k]).value = pending[side][k];
+      showHint(map[k], k);
+    }
+  });
+  showToast((side === 'spa' ? 'Spa' : 'Pool') + ' form filled — check the numbers');
+}
+
+function resetScan(){
+  stopStream();
+  const video = document.getElementById('liveVideo');
+  const canvas = document.getElementById('stripCanvas');
+  video.classList.remove('show');
+  canvas.classList.remove('show');
+  document.getElementById('guideWrap').classList.remove('show');
+  document.getElementById('scanControls').style.display = 'none';
+  document.getElementById('pendingPanels').style.display = 'none';
+  document.getElementById('stripPhoto').value = '';
+  const ctx = canvas.getContext('2d');
+  if(canvas.width) ctx.clearRect(0,0,canvas.width,canvas.height);
+  pending = { spa:{}, pool:{} };
+}
+
+function setMode(m){
+  mode = m;
+  document.getElementById('tabPool').classList.toggle('active', m==='pool');
+  document.getElementById('tabSpa').classList.toggle('active', m==='spa');
+  document.getElementById('saveBtn').className = 'save-btn ' + m;
+  document.getElementById('entriesTitle').textContent = (m==='pool' ? 'Pool log' : 'Spa log');
+  const fr = RANGES.chlorine[m];
+  document.getElementById('freeRangeLabel').textContent = `(${fr[0]}–${fr[1]})`;
+  showHint('fChlorine','chlorine');
+  renderEntries();
+}
+
+function showHint(inputId, key){
+  const val = document.getElementById(inputId).value;
+  const msg = suggestAction(key, val, mode);
+  document.getElementById('hint' + inputId).textContent = msg || '';
+}
+
+function inRange(val, key, side){
+  if(val === '' || val === null || isNaN(val)) return null;
+  const r = key === 'chlorine' ? RANGES.chlorine[side || 'pool'] : RANGES[key];
+  if(!r) return null;
+  const v = parseFloat(val);
+  return v >= r[0] && v <= r[1];
+}
+
+async function loadEntries(){
+  try{
+    const res = await window.storage.get('log:pool');
+    entries.pool = res ? JSON.parse(res.value) : [];
+  }catch(e){ entries.pool = []; }
+  try{
+    const res = await window.storage.get('log:spa');
+    entries.spa = res ? JSON.parse(res.value) : [];
+  }catch(e){ entries.spa = []; }
+  renderEntries();
+}
+
+async function persist(m){
+  try{
+    await window.storage.set('log:' + m, JSON.stringify(entries[m]));
+  }catch(e){
+    showToast('Could not save — try again');
+  }
+}
+
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(()=> t.classList.remove('show'), 1600);
+}
+
+async function saveEntry(){
+  const chlorine = document.getElementById('fChlorine').value;
+  const ph = document.getElementById('fPh').value;
+  const sign = document.getElementById('fSign').value.trim();
+  const errEl = document.getElementById('formError');
+
+  if(chlorine === '' || ph === '' || sign === ''){
+    errEl.style.display = 'block';
+    return;
+  }
+  errEl.style.display = 'none';
+
+  const entry = {
+    id: Date.now().toString(36),
+    date: document.getElementById('fDate').value || todayDate(),
+    time: document.getElementById('fTime').value || nowTime(),
+    chlorine: chlorine,
+    combined: document.getElementById('fCombined').value,
+    ph: ph,
+    alk: document.getElementById('fAlk').value,
+    hardness: document.getElementById('fHardness').value,
+    cya: document.getElementById('fCya').value,
+    clarity: document.getElementById('fClarity').value,
+    temp: document.getElementById('fTemp').value,
+    action: document.getElementById('fAction').value.trim(),
+    comments: document.getElementById('fComments').value.trim(),
+    sign: sign
+  };
+
+  entries[mode].unshift(entry);
+  await persist(mode);
+  renderEntries();
+  clearForm();
+  showToast('Reading saved');
+}
+
+async function deleteEntry(m, id){
+  entries[m] = entries[m].filter(e => e.id !== id);
+  await persist(m);
+  renderEntries();
+}
+
+function clearForm(){
+  ['fChlorine','fCombined','fPh','fAlk','fHardness','fCya','fClarity','fTemp','fAction','fComments','fSign'].forEach(id=>{
+    document.getElementById(id).value = '';
+  });
+  ['fChlorine','fCombined','fPh','fAlk','fHardness','fCya'].forEach(id=>{
+    const h = document.getElementById('hint' + id);
+    if(h) h.textContent = '';
+  });
+  document.getElementById('fDate').value = todayDate();
+  document.getElementById('fTime').value = nowTime();
+}
+
+function renderEntries(){
+  const list = document.getElementById('entriesList');
+  const data = entries[mode];
+  if(!data.length){
+    list.innerHTML = '<div class="empty">No readings logged yet for this pool/spa.</div>';
+    return;
+  }
+  list.innerHTML = data.map(e=>{
+    const chlOk = inRange(e.chlorine, 'chlorine', mode);
+    const phOk = inRange(e.ph, 'ph');
+    const alkOk = inRange(e.alk, 'alk');
+    const hardOk = inRange(e.hardness, 'hardness');
+    const cyaOk = inRange(e.cya, 'cya');
+    const totalOk = inRange(e.combined, 'total');
+    const allOk = [chlOk, phOk, alkOk, hardOk, cyaOk, totalOk].every(v => v === null || v === true);
+    const flagClass = c => c === false ? 'rval flag' : 'rval';
+    const suggestions = [
+      suggestAction('chlorine', e.chlorine, mode),
+      suggestAction('total', e.combined),
+      suggestAction('ph', e.ph),
+      suggestAction('alk', e.alk),
+      suggestAction('hardness', e.hardness),
+      suggestAction('cya', e.cya)
+    ].filter(Boolean);
+    return `
+      <div class="entry">
+        <div class="entry-top">
+          <div>
+            <span class="entry-date">${e.date || ''}</span>
+            <span class="entry-time">${e.time || ''}</span>
+          </div>
+          <span class="badge ${allOk ? 'good' : 'bad'}">${allOk ? 'In range' : 'Check levels'}</span>
+        </div>
+        <div class="readings">
+          <div><span class="rlabel">Free Cl</span><span class="${flagClass(chlOk)}">${e.chlorine || '—'}</span></div>
+          <div><span class="rlabel">pH</span><span class="${flagClass(phOk)}">${e.ph || '—'}</span></div>
+          <div><span class="rlabel">Alk</span><span class="${flagClass(alkOk)}">${e.alk || '—'}</span></div>
+          <div><span class="rlabel">Total Cl/Br</span><span class="${flagClass(totalOk)}">${e.combined || '—'}</span></div>
+          <div><span class="rlabel">Hardness</span><span class="${flagClass(hardOk)}">${e.hardness || '—'}</span></div>
+          <div><span class="rlabel">CYA</span><span class="${flagClass(cyaOk)}">${e.cya || '—'}</span></div>
+          <div><span class="rlabel">Clarity</span><span class="rval">${e.clarity ? e.clarity+'%' : '—'}</span></div>
+          <div><span class="rlabel">Temp</span><span class="rval">${e.temp ? e.temp+'°' : '—'}</span></div>
+        </div>
+        ${suggestions.length ? `<div class="entry-note" style="color:var(--bad);"><strong>Suggested:</strong> ${suggestions.map(escapeHtml).join('; ')}</div>` : ''}
+        ${e.action ? `<div class="entry-note"><strong>Action taken:</strong> ${escapeHtml(e.action)}</div>` : ''}
+        ${e.comments ? `<div class="entry-note"><strong>Notes:</strong> ${escapeHtml(e.comments)}</div>` : ''}
+        <div class="entry-note">Signed: ${escapeHtml(e.sign)}</div>
+        <div class="entry-actions">
+          <button onclick="deleteEntry('${mode}','${e.id}')"><i class="ti"></i>Delete</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function exportCSV(){
+  const data = entries[mode];
+  if(!data.length){ showToast('No entries to export'); return; }
+  const headers = ['Date','Time','Free Chlorine','Total Chlorine/Bromine','pH','Total Alkalinity','Total Hardness','Cyanuric Acid','Clarity %','Water Temp','Corrective Action','Comments','Sign'];
+  const rows = data.map(e => [e.date,e.time,e.chlorine,e.combined,e.ph,e.alk,e.hardness,e.cya,e.clarity,e.temp,e.action,e.comments,e.sign]
+    .map(v => `"${(v||'').toString().replace(/"/g,'""')}"`).join(','));
+  const csv = [headers.join(','), ...rows].join('\n');
+  const blob = new Blob([csv], {type:'text/csv'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${mode}-log-${todayDate()}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+document.getElementById('fDate').value = todayDate();
+document.getElementById('fTime').value = nowTime();
+setMode('spa');
+loadEntries();
+</script>
+
+</body>
+</html>
