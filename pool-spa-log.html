@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>Surfers Chalet — Pool &amp; Spa Log</title>
+<script src="https://alcdn.msauth.net/browser/3.7.1/js/msal-browser.min.js"></script>
 <style>
   :root{
     --ink:#1c2b26;
@@ -399,6 +400,15 @@
 
 <main>
 
+  <div class="card">
+    <h2>OneDrive sync</h2>
+    <p class="hint" style="margin-bottom:10px;">Connect once, then "Submit Daily Reading" below saves straight into an Excel workbook in your OneDrive — as well as saving locally like normal.</p>
+    <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+      <button class="scan-mode-btn" style="flex:none; padding:9px 16px;" id="connectOneDriveBtn" onclick="connectOneDrive()">Connect OneDrive</button>
+      <span id="oneDriveStatus" style="font-size:12.5px; color:var(--ink-faint);">Not connected</span>
+    </div>
+  </div>
+
   <div class="card scan-card">
     <h2>Scan test strip</h2>
     <p class="hint">Line the strips up so spa (left) and pool (right) each sit under their six markers, in pad order top to bottom: hardness, total Cl/Br, free chlorine, pH, alkalinity, CYA. Then capture once — no tapping needed. <strong>Viewing this inside the Claude app?</strong> Use "Upload photo" — it opens your phone's camera directly. "Use camera" (live view) needs a real browser tab.</p>
@@ -517,6 +527,7 @@
     <div class="error" id="formError">Please fill in free chlorine, pH and initials before saving.</div>
 
     <button class="save-btn pool" id="saveBtn" onclick="saveEntry()">Save reading</button>
+    <button class="scan-reset" style="width:100%; margin-top:8px; padding:11px;" id="submitDailyBtn" onclick="submitDailyReading()">Submit Daily Reading (saves to OneDrive too)</button>
   </div>
 
   <div class="card">
@@ -532,6 +543,9 @@
 <div class="toast" id="toast">Saved</div>
 
 <script>
+// Minimal valid empty .xlsx used to create the OneDrive workbook on first submit.
+const EMPTY_XLSX_BASE64 = "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";
+
 let mode = 'spa';
 let entries = { pool: [], spa: [] };
 function todayDate(){
@@ -837,7 +851,7 @@ function showToast(msg){
   setTimeout(()=> t.classList.remove('show'), 1600);
 }
 
-async function saveEntry(){
+function buildEntryFromForm(){
   const chlorine = document.getElementById('fChlorine').value;
   const ph = document.getElementById('fPh').value;
   const sign = document.getElementById('fSign').value.trim();
@@ -845,11 +859,11 @@ async function saveEntry(){
 
   if(chlorine === '' || ph === '' || sign === ''){
     errEl.style.display = 'block';
-    return;
+    return null;
   }
   errEl.style.display = 'none';
 
-  const entry = {
+  return {
     id: Date.now().toString(36),
     date: document.getElementById('fDate').value || todayDate(),
     time: document.getElementById('fTime').value || nowTime(),
@@ -865,12 +879,195 @@ async function saveEntry(){
     comments: document.getElementById('fComments').value.trim(),
     sign: sign
   };
+}
 
+async function saveEntryObject(entry){
   entries[mode].unshift(entry);
   await persist(mode);
   renderEntries();
+}
+
+async function saveEntry(){
+  const entry = buildEntryFromForm();
+  if(!entry) return;
+  await saveEntryObject(entry);
   clearForm();
   showToast('Reading saved');
+}
+
+// ---------- OneDrive / Microsoft Graph sync ----------
+
+const MSAL_CONFIG = {
+  auth: {
+    clientId: '9ad7e59a-fa05-4f2d-8449-4a9100e8aaeb',
+    authority: 'https://login.microsoftonline.com/consumers',
+    redirectUri: 'https://ppareezer.github.io/pool-spa-log/pool-spa-log.html'
+  },
+  cache: { cacheLocation: 'localStorage' }
+};
+const GRAPH_SCOPES = ['Files.ReadWrite', 'User.Read'];
+const WORKBOOK_PATH = 'pool-spa-daily-log.xlsx';
+const SHEET_HEADERS = ['Date','Time','Free Chlorine','Total Chlorine/Bromine','pH','Total Alkalinity','Total Hardness','Cyanuric Acid','Clarity %','Water Temp','Corrective Action','Comments','Sign'];
+
+let msalInstance = null;
+if(window.msal){
+  msalInstance = new msal.PublicClientApplication(MSAL_CONFIG);
+  msalInstance.initialize().then(() => {
+    const accounts = msalInstance.getAllAccounts();
+    if(accounts.length) updateOneDriveStatus(accounts[0]);
+  });
+}
+
+function updateOneDriveStatus(account){
+  const el = document.getElementById('oneDriveStatus');
+  const btn = document.getElementById('connectOneDriveBtn');
+  if(account){
+    el.textContent = 'Connected as ' + (account.username || account.name);
+    el.style.color = 'var(--good)';
+    btn.textContent = 'Reconnect';
+  }else{
+    el.textContent = 'Not connected';
+    el.style.color = 'var(--ink-faint)';
+    btn.textContent = 'Connect OneDrive';
+  }
+}
+
+async function connectOneDrive(){
+  if(!msalInstance){
+    showToast('Sign-in library did not load — check your connection');
+    return;
+  }
+  try{
+    const result = await msalInstance.loginPopup({ scopes: GRAPH_SCOPES });
+    updateOneDriveStatus(result.account);
+    showToast('Connected to OneDrive');
+  }catch(e){
+    showToast('OneDrive sign-in failed or was cancelled');
+  }
+}
+
+async function getGraphToken(){
+  if(!msalInstance) throw new Error('MSAL not loaded');
+  const accounts = msalInstance.getAllAccounts();
+  if(!accounts.length){
+    const result = await msalInstance.loginPopup({ scopes: GRAPH_SCOPES });
+    return result.accessToken;
+  }
+  try{
+    const result = await msalInstance.acquireTokenSilent({ scopes: GRAPH_SCOPES, account: accounts[0] });
+    return result.accessToken;
+  }catch(e){
+    const result = await msalInstance.acquireTokenPopup({ scopes: GRAPH_SCOPES, account: accounts[0] });
+    return result.accessToken;
+  }
+}
+
+function base64ToUint8Array(base64){
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for(let i=0;i<binary.length;i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
+
+async function graphFetch(url, token, options){
+  const res = await fetch(url, Object.assign({}, options, {
+    headers: Object.assign({ Authorization: 'Bearer ' + token }, (options && options.headers) || {})
+  }));
+  return res;
+}
+
+async function ensureWorkbookItem(token){
+  let res = await graphFetch(`https://graph.microsoft.com/v1.0/me/drive/root:/${WORKBOOK_PATH}`, token);
+  if(res.status === 404){
+    const bytes = base64ToUint8Array(EMPTY_XLSX_BASE64);
+    const createRes = await graphFetch(`https://graph.microsoft.com/v1.0/me/drive/root:/${WORKBOOK_PATH}:/content`, token, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/octet-stream' },
+      body: bytes
+    });
+    if(!createRes.ok) throw new Error('Could not create workbook in OneDrive');
+    return await createRes.json();
+  }
+  if(!res.ok) throw new Error('Could not read OneDrive workbook');
+  return await res.json();
+}
+
+async function ensureSheet(token, itemId, sheetName){
+  const wsRes = await graphFetch(`https://graph.microsoft.com/v1.0/me/drive/items/${itemId}/workbook/worksheets`, token);
+  const wsData = await wsRes.json();
+  const names = (wsData.value || []).map(w => w.name);
+  if(names.includes(sheetName)) return;
+
+  await graphFetch(`https://graph.microsoft.com/v1.0/me/drive/items/${itemId}/workbook/worksheets/add`, token, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: sheetName })
+  });
+
+  const lastCol = String.fromCharCode('A'.charCodeAt(0) + SHEET_HEADERS.length - 1);
+  await graphFetch(
+    `https://graph.microsoft.com/v1.0/me/drive/items/${itemId}/workbook/worksheets('${sheetName}')/range(address='A1:${lastCol}1')`,
+    token,
+    {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ values: [SHEET_HEADERS] })
+    }
+  );
+}
+
+async function appendRowToSheet(token, itemId, sheetName, entry){
+  const rowValues = [
+    entry.date, entry.time, entry.chlorine, entry.combined, entry.ph, entry.alk,
+    entry.hardness, entry.cya, entry.clarity, entry.temp, entry.action, entry.comments, entry.sign
+  ].map(v => v === undefined || v === null ? '' : v);
+
+  const usedRes = await graphFetch(
+    `https://graph.microsoft.com/v1.0/me/drive/items/${itemId}/workbook/worksheets('${sheetName}')/usedRange`,
+    token
+  );
+  const used = await usedRes.json();
+  const nextRow = (used.rowCount || 1) + 1;
+  const lastCol = String.fromCharCode('A'.charCodeAt(0) + SHEET_HEADERS.length - 1);
+
+  const patchRes = await graphFetch(
+    `https://graph.microsoft.com/v1.0/me/drive/items/${itemId}/workbook/worksheets('${sheetName}')/range(address='A${nextRow}:${lastCol}${nextRow}')`,
+    token,
+    {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ values: [rowValues] })
+    }
+  );
+  if(!patchRes.ok) throw new Error('Could not write row to OneDrive sheet');
+}
+
+async function submitDailyReading(){
+  const entry = buildEntryFromForm();
+  if(!entry) return;
+
+  const btn = document.getElementById('submitDailyBtn');
+  const originalText = btn.textContent;
+  btn.textContent = 'Submitting…';
+  btn.disabled = true;
+
+  try{
+    await saveEntryObject(entry);
+
+    const token = await getGraphToken();
+    const itemData = await ensureWorkbookItem(token);
+    const sheetName = mode === 'pool' ? 'Pool' : 'Spa';
+    await ensureSheet(token, itemData.id, sheetName);
+    await appendRowToSheet(token, itemData.id, sheetName, entry);
+
+    clearForm();
+    showToast('Saved locally and to OneDrive');
+  }catch(e){
+    showToast('Saved locally — OneDrive submit failed, try again');
+  }finally{
+    btn.textContent = originalText;
+    btn.disabled = false;
+  }
 }
 
 async function deleteEntry(m, id){
