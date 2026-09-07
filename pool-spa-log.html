@@ -526,8 +526,7 @@
 
     <div class="error" id="formError">Please fill in free chlorine, pH and initials before saving.</div>
 
-    <button class="save-btn pool" id="saveBtn" onclick="saveEntry()">Save reading</button>
-    <button class="scan-reset" style="width:100%; margin-top:8px; padding:11px;" id="submitDailyBtn" onclick="submitDailyReading()">Submit Daily Reading (saves to OneDrive too)</button>
+    <button class="save-btn pool" id="submitDailyBtn" onclick="submitDailyReading()">Submit Daily Reading</button>
   </div>
 
   <div class="card">
@@ -782,8 +781,8 @@ function setMode(m){
   mode = m;
   document.getElementById('tabPool').classList.toggle('active', m==='pool');
   document.getElementById('tabSpa').classList.toggle('active', m==='spa');
-  document.getElementById('saveBtn').className = 'save-btn ' + m;
-  document.getElementById('entriesTitle').textContent = (m==='pool' ? 'Pool log' : 'Spa log');
+  document.getElementById('submitDailyBtn').className = 'save-btn ' + m;
+  document.getElementById('entriesTitle').textContent = (m==='pool' ? 'Pool — last 3 (full log in OneDrive)' : 'Spa — last 3 (full log in OneDrive)');
   const fr = RANGES.chlorine[m];
   document.getElementById('freeRangeLabel').textContent = `(${fr[0]}–${fr[1]})`;
   showHint('fChlorine','chlorine');
@@ -885,14 +884,6 @@ async function saveEntryObject(entry){
   entries[mode].unshift(entry);
   await persist(mode);
   renderEntries();
-}
-
-async function saveEntry(){
-  const entry = buildEntryFromForm();
-  if(!entry) return;
-  await saveEntryObject(entry);
-  clearForm();
-  showToast('Reading saved');
 }
 
 // ---------- OneDrive / Microsoft Graph sync ----------
@@ -1058,8 +1049,14 @@ async function submitDailyReading(){
     await ensureSheet(token, itemData.id, sheetName);
     await appendRowToSheet(token, itemData.id, sheetName, entry);
 
+    // OneDrive now holds the permanent record, so keep just a small local
+    // buffer (most recent 3) rather than growing this device's storage forever.
+    entries[mode] = entries[mode].slice(0, 3);
+    await persist(mode);
+    renderEntries();
+
     clearForm();
-    showToast('Saved locally and to OneDrive');
+    showToast('Saved to OneDrive');
   }catch(e){
     showToast('Saved locally — OneDrive submit failed, try again');
   }finally{
