@@ -790,13 +790,33 @@ function inRange(val, key, side){
   return v >= r[0] && v <= r[1];
 }
 
+// Storage that works both inside Claude's preview (window.storage) and on
+// any normal hosted page (falls back to the browser's own localStorage).
+async function storageGet(key){
+  if(window.storage && typeof window.storage.get === 'function'){
+    try{ return await window.storage.get(key); }
+    catch(e){ /* fall through to localStorage */ }
+  }
+  const v = localStorage.getItem(key);
+  return v === null ? null : { key, value: v };
+}
+
+async function storageSet(key, value){
+  if(window.storage && typeof window.storage.set === 'function'){
+    try{ return await window.storage.set(key, value); }
+    catch(e){ /* fall through to localStorage */ }
+  }
+  localStorage.setItem(key, value);
+  return { key, value };
+}
+
 async function loadEntries(){
   try{
-    const res = await window.storage.get('log:pool');
+    const res = await storageGet('log:pool');
     entries.pool = res ? JSON.parse(res.value) : [];
   }catch(e){ entries.pool = []; }
   try{
-    const res = await window.storage.get('log:spa');
+    const res = await storageGet('log:spa');
     entries.spa = res ? JSON.parse(res.value) : [];
   }catch(e){ entries.spa = []; }
   renderEntries();
@@ -804,7 +824,7 @@ async function loadEntries(){
 
 async function persist(m){
   try{
-    await window.storage.set('log:' + m, JSON.stringify(entries[m]));
+    await storageSet('log:' + m, JSON.stringify(entries[m]));
   }catch(e){
     showToast('Could not save — try again');
   }
