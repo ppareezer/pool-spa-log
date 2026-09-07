@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>Surfers Chalet — Pool &amp; Spa Log</title>
-<script src="https://alcdn.msauth.net/browser/3.7.1/js/msal-browser.min.js"></script>
+<script src="https://alcdn.msauth.net/browser/2.38.2/js/msal-browser.min.js"></script>
 <style>
   :root{
     --ink:#1c2b26;
@@ -912,10 +912,8 @@ const SHEET_HEADERS = ['Date','Time','Free Chlorine','Total Chlorine/Bromine','p
 let msalInstance = null;
 if(window.msal){
   msalInstance = new msal.PublicClientApplication(MSAL_CONFIG);
-  msalInstance.initialize().then(() => {
-    const accounts = msalInstance.getAllAccounts();
-    if(accounts.length) updateOneDriveStatus(accounts[0]);
-  });
+  const accounts = msalInstance.getAllAccounts();
+  if(accounts.length) updateOneDriveStatus(accounts[0]);
 }
 
 function updateOneDriveStatus(account){
