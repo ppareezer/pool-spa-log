@@ -411,7 +411,8 @@
 
   <div class="card scan-card">
     <h2>Scan test strip</h2>
-    <p class="hint">Line the strips up so spa (left) and pool (right) each sit under their six markers, in pad order top to bottom: hardness, total Cl/Br, free chlorine, pH, alkalinity, CYA. Then capture once — no tapping needed. <strong>Viewing this inside the Claude app?</strong> Use "Upload photo" — it opens your phone's camera directly. "Use camera" (live view) needs a real browser tab.</p>
+    <p class="hint">Two quick steps: first line up the spa strip under the left-column markers, then the pool strip under the right-column markers, in pad order top to bottom: hardness, total Cl/Br, free chlorine, pH, alkalinity, CYA. <strong>Viewing this inside the Claude app?</strong> Use "Upload photo" — it opens your phone's camera directly. "Use camera" (live view) needs a real browser tab.</p>
+    <p class="hint" id="captureStepLabel" style="font-weight:700; color:var(--ink); display:none;"></p>
 
     <div class="scan-buttons" id="scanButtons">
       <button class="scan-mode-btn" onclick="startLiveScan()">Use camera</button>
@@ -627,25 +628,40 @@ function nearestMatch(paletteKey, rgb){
 const PAD_ORDER = ['hardness','total','chlorine','ph','alk','cya'];
 const PAD_ABBR = { hardness:'HD', total:'Cl/Br', chlorine:'FCl', ph:'pH', alk:'ALK', cya:'CYA' };
 const ROW_Y = [16, 31, 46, 61, 76, 91]; // % down the frame for each of the 6 pads
-const COL_X = { spa: 28, pool: 72 };    // % across the frame for each strip
+const COL_X = { spa: 28, pool: 72 };    // % across the frame — kept the same as the old side-by-side layout
 
 let mediaStream = null;
+let captureStep = 1; // 1 = spa (left column), 2 = pool (right column)
+
+function stepSide(){
+  return captureStep === 1 ? 'spa' : 'pool';
+}
 
 function buildGuideOverlay(){
   const overlay = document.getElementById('guideOverlay');
-  let html = `<div class="col-label" style="left:${COL_X.spa}%;">SPA</div>
-              <div class="col-label" style="left:${COL_X.pool}%;">POOL</div>
-              <div class="divider"></div>`;
-  ['spa','pool'].forEach(side=>{
-    PAD_ORDER.forEach((key, i)=>{
-      html += `<div class="guide-dot ${side}" style="left:${COL_X[side]}%; top:${ROW_Y[i]}%;">
-                 <span class="dot-label">${PAD_ABBR[key]}</span>
-               </div>`;
-    });
+  const side = stepSide();
+  const label = side.toUpperCase();
+  let html = `<div class="col-label" style="left:${COL_X[side]}%;">${label}</div>`;
+  PAD_ORDER.forEach((key, i)=>{
+    html += `<div class="guide-dot ${side}" style="left:${COL_X[side]}%; top:${ROW_Y[i]}%;">
+               <span class="dot-label">${PAD_ABBR[key]}</span>
+             </div>`;
   });
   overlay.innerHTML = html;
 }
-buildGuideOverlay();
+
+function updateCaptureUI(){
+  const side = stepSide();
+  const label = side === 'spa' ? 'Spa' : 'Pool';
+  const captureBtn = document.getElementById('captureBtn');
+  if(captureBtn) captureBtn.textContent = 'Capture ' + label;
+  const stepLabel = document.getElementById('captureStepLabel');
+  if(stepLabel){
+    stepLabel.style.display = 'block';
+    stepLabel.textContent = `Step ${captureStep} of 2 — align the ${label} strip under the markers`;
+  }
+  buildGuideOverlay();
+}
 
 async function startLiveScan(){
   resetScan();
@@ -657,6 +673,7 @@ async function startLiveScan(){
     document.getElementById('guideWrap').classList.add('show');
     video.classList.add('show');
     document.getElementById('scanControls').style.display = 'flex';
+    updateCaptureUI();
   }catch(e){
     showToast('Camera blocked here — use "Upload photo" instead');
   }
@@ -665,7 +682,6 @@ async function startLiveScan(){
 function handlePhoto(evt){
   const file = evt.target.files[0];
   if(!file) return;
-  resetScan();
   const reader = new FileReader();
   reader.onload = function(e){
     const img = new Image();
@@ -676,26 +692,44 @@ function handlePhoto(evt){
       const ctx = canvas.getContext('2d');
       ctx.drawImage(img, 0, 0);
       document.getElementById('guideWrap').classList.add('show');
+      document.getElementById('liveVideo').classList.remove('show');
       canvas.classList.add('show');
       document.getElementById('scanControls').style.display = 'flex';
+      updateCaptureUI();
     };
     img.src = e.target.result;
   };
   reader.readAsDataURL(file);
 }
 
+function sampleColumnInto(canvas, side){
+  const ctx = canvas.getContext('2d');
+  PAD_ORDER.forEach((key, i)=>{
+    const x = Math.round(canvas.width * COL_X[side] / 100);
+    const y = Math.round(canvas.height * ROW_Y[i] / 100);
+    const size = Math.max(4, Math.round(canvas.width * 0.02));
+    const sx = Math.max(0, x - size), sy = Math.max(0, y - size);
+    const sw = Math.min(size*2, canvas.width - sx), sh = Math.min(size*2, canvas.height - sy);
+    const imgData = ctx.getImageData(sx, sy, sw, sh);
+    let r=0,g=0,b=0,count=0;
+    for(let p=0;p<imgData.data.length;p+=4){
+      r += imgData.data[p]; g += imgData.data[p+1]; b += imgData.data[p+2]; count++;
+    }
+    r = Math.round(r/count); g = Math.round(g/count); b = Math.round(b/count);
+    pending[side][key] = nearestMatch(key, [r,g,b]);
+  });
+}
+
 function captureGrid(){
   const canvas = document.getElementById('stripCanvas');
   const video = document.getElementById('liveVideo');
+  const side = stepSide();
+  const isLive = !!(mediaStream && video.classList.contains('show'));
 
-  // If the live video is running, freeze the current frame onto the canvas
-  if(mediaStream && video.classList.contains('show')){
+  if(isLive){
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
     canvas.getContext('2d').drawImage(video, 0, 0);
-    video.classList.remove('show');
-    canvas.classList.add('show');
-    stopStream();
   }
 
   if(!canvas.width){
@@ -703,29 +737,31 @@ function captureGrid(){
     return;
   }
 
-  const ctx = canvas.getContext('2d');
-  pending = { spa:{}, pool:{} };
-
-  ['spa','pool'].forEach(side=>{
-    PAD_ORDER.forEach((key, i)=>{
-      const x = Math.round(canvas.width * COL_X[side] / 100);
-      const y = Math.round(canvas.height * ROW_Y[i] / 100);
-      const size = Math.max(4, Math.round(canvas.width * 0.02));
-      const sx = Math.max(0, x - size), sy = Math.max(0, y - size);
-      const sw = Math.min(size*2, canvas.width - sx), sh = Math.min(size*2, canvas.height - sy);
-      const imgData = ctx.getImageData(sx, sy, sw, sh);
-      let r=0,g=0,b=0,count=0;
-      for(let p=0;p<imgData.data.length;p+=4){
-        r += imgData.data[p]; g += imgData.data[p+1]; b += imgData.data[p+2]; count++;
-      }
-      r = Math.round(r/count); g = Math.round(g/count); b = Math.round(b/count);
-      pending[side][key] = nearestMatch(key, [r,g,b]);
-    });
-  });
-
+  sampleColumnInto(canvas, side);
   document.getElementById('pendingPanels').style.display = 'grid';
   renderPending();
-  showToast('Captured — check both panels before filling');
+
+  if(captureStep === 1){
+    captureStep = 2;
+    if(isLive){
+      updateCaptureUI();
+      showToast('Spa captured — now align the pool strip');
+    }else{
+      // Photo mode: prompt for a second, separate photo of the pool strip
+      canvas.classList.remove('show');
+      document.getElementById('scanControls').style.display = 'none';
+      document.getElementById('stripPhoto').value = '';
+      updateCaptureUI();
+      showToast('Spa captured — now upload a photo of the pool strip');
+    }
+  }else{
+    stopStream();
+    document.getElementById('guideWrap').classList.remove('show');
+    document.getElementById('scanControls').style.display = 'none';
+    document.getElementById('captureStepLabel').style.display = 'none';
+    captureStep = 1;
+    showToast('Both strips captured — check panels before filling');
+  }
 }
 
 function stopStream(){
@@ -764,6 +800,7 @@ function fillForm(side){
 
 function resetScan(){
   stopStream();
+  captureStep = 1;
   const video = document.getElementById('liveVideo');
   const canvas = document.getElementById('stripCanvas');
   video.classList.remove('show');
@@ -771,6 +808,7 @@ function resetScan(){
   document.getElementById('guideWrap').classList.remove('show');
   document.getElementById('scanControls').style.display = 'none';
   document.getElementById('pendingPanels').style.display = 'none';
+  document.getElementById('captureStepLabel').style.display = 'none';
   document.getElementById('stripPhoto').value = '';
   const ctx = canvas.getContext('2d');
   if(canvas.width) ctx.clearRect(0,0,canvas.width,canvas.height);
