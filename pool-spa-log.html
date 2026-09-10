@@ -275,23 +275,17 @@
   }
   .guide-dot{
     position:absolute;
-    width:32px;
-    height:32px;
-    border:2px solid rgba(255,255,255,.9);
-    border-radius:50%;
+    width:18px;
+    height:18px;
+    border:2px solid rgba(255,255,255,.95);
+    border-radius:4px;
+    background:rgba(255,255,255,.12);
     transform:translate(-50%,-50%);
     box-shadow:0 0 0 2px rgba(0,0,0,.35);
   }
-  .guide-dot::before, .guide-dot::after{
-    content:'';
-    position:absolute;
-    background:rgba(255,255,255,.9);
-  }
-  .guide-dot::before{ width:2px; height:12px; left:50%; top:50%; transform:translate(-50%,-50%); }
-  .guide-dot::after{ width:12px; height:2px; left:50%; top:50%; transform:translate(-50%,-50%); }
   .guide-dot .dot-label{
     position:absolute;
-    left:38px;
+    left:26px;
     top:50%;
     transform:translateY(-50%);
     font-size:9.5px;
@@ -302,7 +296,7 @@
     border-radius:4px;
     white-space:nowrap;
   }
-  .guide-dot.pool .dot-label{ left:auto; right:38px; }
+  .guide-dot.pool .dot-label{ left:auto; right:26px; }
 
   .scan-controls{
     display:flex;
@@ -704,12 +698,12 @@ function handlePhoto(evt){
 
 function sampleColumnInto(canvas, side){
   const ctx = canvas.getContext('2d');
+  const HALF = 4; // 4 pixels each side of center = a 9x9 averaging window
   PAD_ORDER.forEach((key, i)=>{
     const x = Math.round(canvas.width * COL_X[side] / 100);
     const y = Math.round(canvas.height * ROW_Y[i] / 100);
-    const size = Math.max(4, Math.round(canvas.width * 0.02));
-    const sx = Math.max(0, x - size), sy = Math.max(0, y - size);
-    const sw = Math.min(size*2, canvas.width - sx), sh = Math.min(size*2, canvas.height - sy);
+    const sx = Math.max(0, x - HALF), sy = Math.max(0, y - HALF);
+    const sw = Math.min(HALF*2 + 1, canvas.width - sx), sh = Math.min(HALF*2 + 1, canvas.height - sy);
     const imgData = ctx.getImageData(sx, sy, sw, sh);
     let r=0,g=0,b=0,count=0;
     for(let p=0;p<imgData.data.length;p+=4){
