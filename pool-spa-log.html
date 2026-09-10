@@ -146,12 +146,24 @@
   .entries-head h2{ margin:0; }
   .export-btn{
     font-size:12px;
-    color:var(--ink-soft);
-    background:none;
-    border:1px solid var(--line);
+    font-weight:700;
+    color:#fff;
+    background:var(--ink-faint);
+    border:none;
     border-radius:8px;
-    padding:6px 10px;
+    padding:7px 12px;
   }
+  .export-btn.pool{ background:var(--pool); }
+  .export-btn.spa{ background:var(--spa); }
+  .sync-tag{
+    font-size:10.5px;
+    font-weight:700;
+    padding:1px 7px;
+    border-radius:10px;
+    margin-left:6px;
+  }
+  .sync-tag.synced{ background:var(--good-soft); color:var(--good); }
+  .sync-tag.pending{ background:var(--bad-soft); color:var(--bad); }
 
   .entry{
     border:1px solid var(--line);
@@ -405,13 +417,19 @@
 
   <div class="card scan-card">
     <h2>Scan test strip</h2>
-    <p class="hint">Two quick steps: first line up the spa strip under the left-column markers, then the pool strip under the right-column markers, in pad order top to bottom: hardness, total Cl/Br, free chlorine, pH, alkalinity, CYA. <strong>Viewing this inside the Claude app?</strong> Use "Upload photo" — it opens your phone's camera directly. "Use camera" (live view) needs a real browser tab.</p>
+    <p class="hint" style="font-weight:700; color:var(--ink); margin-bottom:6px;">Guide:</p>
+    <ol class="hint" style="margin:0 0 8px; padding-left:20px;">
+      <li>Line up the spa strip under the markers on the left side of the camera view and capture image.</li>
+      <li>Repeat with the pool strip under the right-column markers.</li>
+      <li>Assess quality of data readings and click "Fill spa form" and repeat for "Fill pool form".</li>
+      <li>Review readings against reference chart.</li>
+      <li>Complete Clarity, Water temperature and document any Corrective Actions and Maintenance activities.</li>
+    </ol>
+    <p class="hint">NOTE: pad order top to bottom: hardness, total Cl/Br, free chlorine, pH, alkalinity, CYA.</p>
     <p class="hint" id="captureStepLabel" style="font-weight:700; color:var(--ink); display:none;"></p>
 
     <div class="scan-buttons" id="scanButtons">
       <button class="scan-mode-btn" onclick="startLiveScan()">Use camera</button>
-      <label class="scan-mode-btn" for="stripPhoto">Upload photo</label>
-      <input type="file" id="stripPhoto" accept="image/*" capture="environment" onchange="handlePhoto(event)">
     </div>
 
     <div class="guide-wrap" id="guideWrap">
@@ -527,7 +545,7 @@
   <div class="card">
     <div class="entries-head">
       <h2 id="entriesTitle">Pool log</h2>
-      <button class="export-btn" onclick="exportCSV()">Export CSV</button>
+      <button class="export-btn pool" id="pushBtn" onclick="pushToOneDrive()">Push to OneDrive</button>
     </div>
     <div id="entriesList"></div>
   </div>
@@ -669,31 +687,8 @@ async function startLiveScan(){
     document.getElementById('scanControls').style.display = 'flex';
     updateCaptureUI();
   }catch(e){
-    showToast('Camera blocked here — use "Upload photo" instead');
+    showToast('Camera unavailable — open this page in a real browser tab (not the Claude preview) to use the camera');
   }
-}
-
-function handlePhoto(evt){
-  const file = evt.target.files[0];
-  if(!file) return;
-  const reader = new FileReader();
-  reader.onload = function(e){
-    const img = new Image();
-    img.onload = function(){
-      const canvas = document.getElementById('stripCanvas');
-      canvas.width = img.naturalWidth;
-      canvas.height = img.naturalHeight;
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(img, 0, 0);
-      document.getElementById('guideWrap').classList.add('show');
-      document.getElementById('liveVideo').classList.remove('show');
-      canvas.classList.add('show');
-      document.getElementById('scanControls').style.display = 'flex';
-      updateCaptureUI();
-    };
-    img.src = e.target.result;
-  };
-  reader.readAsDataURL(file);
 }
 
 function sampleColumnInto(canvas, side){
@@ -718,13 +713,15 @@ function captureGrid(){
   const canvas = document.getElementById('stripCanvas');
   const video = document.getElementById('liveVideo');
   const side = stepSide();
-  const isLive = !!(mediaStream && video.classList.contains('show'));
 
-  if(isLive){
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    canvas.getContext('2d').drawImage(video, 0, 0);
+  if(!mediaStream){
+    showToast('Camera isn\'t running — tap "Use camera" first');
+    return;
   }
+
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  canvas.getContext('2d').drawImage(video, 0, 0);
 
   if(!canvas.width){
     showToast('Nothing to capture yet');
@@ -737,17 +734,8 @@ function captureGrid(){
 
   if(captureStep === 1){
     captureStep = 2;
-    if(isLive){
-      updateCaptureUI();
-      showToast('Spa captured — now align the pool strip');
-    }else{
-      // Photo mode: prompt for a second, separate photo of the pool strip
-      canvas.classList.remove('show');
-      document.getElementById('scanControls').style.display = 'none';
-      document.getElementById('stripPhoto').value = '';
-      updateCaptureUI();
-      showToast('Spa captured — now upload a photo of the pool strip');
-    }
+    updateCaptureUI();
+    showToast('Spa captured — now align the pool strip');
   }else{
     stopStream();
     document.getElementById('guideWrap').classList.remove('show');
@@ -803,7 +791,6 @@ function resetScan(){
   document.getElementById('scanControls').style.display = 'none';
   document.getElementById('pendingPanels').style.display = 'none';
   document.getElementById('captureStepLabel').style.display = 'none';
-  document.getElementById('stripPhoto').value = '';
   const ctx = canvas.getContext('2d');
   if(canvas.width) ctx.clearRect(0,0,canvas.width,canvas.height);
   pending = { spa:{}, pool:{} };
@@ -814,10 +801,11 @@ function setMode(m){
   document.getElementById('tabPool').classList.toggle('active', m==='pool');
   document.getElementById('tabSpa').classList.toggle('active', m==='spa');
   document.getElementById('submitDailyBtn').className = 'save-btn ' + m;
+  document.getElementById('pushBtn').className = 'export-btn ' + m;
   document.getElementById('entriesTitle').textContent = (m==='pool' ? 'Pool — last 3 (full log in OneDrive)' : 'Spa — last 3 (full log in OneDrive)');
   const fr = RANGES.chlorine[m];
   document.getElementById('freeRangeLabel').textContent = `(${fr[0]}–${fr[1]})`;
-  showHint('fChlorine','chlorine');
+  clearForm();
   renderEntries();
 }
 
@@ -997,6 +985,15 @@ async function graphFetch(url, token, options){
   return res;
 }
 
+async function assertOk(res, context){
+  if(!res.ok){
+    let detail = '';
+    try{ detail = (await res.text()).slice(0, 200); }catch(e){}
+    throw new Error(`${context} (HTTP ${res.status}) ${detail}`);
+  }
+  return res;
+}
+
 async function ensureWorkbookItem(token){
   let res = await graphFetch(`https://graph.microsoft.com/v1.0/me/drive/root:/${WORKBOOK_PATH}`, token);
   if(res.status === 404){
@@ -1006,27 +1003,29 @@ async function ensureWorkbookItem(token){
       headers: { 'Content-Type': 'application/octet-stream' },
       body: bytes
     });
-    if(!createRes.ok) throw new Error('Could not create workbook in OneDrive');
+    await assertOk(createRes, 'Creating workbook');
     return await createRes.json();
   }
-  if(!res.ok) throw new Error('Could not read OneDrive workbook');
+  await assertOk(res, 'Reading workbook');
   return await res.json();
 }
 
 async function ensureSheet(token, itemId, sheetName){
   const wsRes = await graphFetch(`https://graph.microsoft.com/v1.0/me/drive/items/${itemId}/workbook/worksheets`, token);
+  await assertOk(wsRes, 'Listing worksheets');
   const wsData = await wsRes.json();
   const names = (wsData.value || []).map(w => w.name);
   if(names.includes(sheetName)) return;
 
-  await graphFetch(`https://graph.microsoft.com/v1.0/me/drive/items/${itemId}/workbook/worksheets/add`, token, {
+  const addRes = await graphFetch(`https://graph.microsoft.com/v1.0/me/drive/items/${itemId}/workbook/worksheets/add`, token, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ name: sheetName })
   });
+  await assertOk(addRes, `Creating "${sheetName}" sheet`);
 
   const lastCol = String.fromCharCode('A'.charCodeAt(0) + SHEET_HEADERS.length - 1);
-  await graphFetch(
+  const headerRes = await graphFetch(
     `https://graph.microsoft.com/v1.0/me/drive/items/${itemId}/workbook/worksheets('${sheetName}')/range(address='A1:${lastCol}1')`,
     token,
     {
@@ -1035,6 +1034,7 @@ async function ensureSheet(token, itemId, sheetName){
       body: JSON.stringify({ values: [SHEET_HEADERS] })
     }
   );
+  await assertOk(headerRes, `Writing "${sheetName}" header row`);
 }
 
 async function appendRowToSheet(token, itemId, sheetName, entry){
@@ -1047,6 +1047,7 @@ async function appendRowToSheet(token, itemId, sheetName, entry){
     `https://graph.microsoft.com/v1.0/me/drive/items/${itemId}/workbook/worksheets('${sheetName}')/usedRange`,
     token
   );
+  await assertOk(usedRes, `Reading "${sheetName}" used range`);
   const used = await usedRes.json();
   const nextRow = (used.rowCount || 1) + 1;
   const lastCol = String.fromCharCode('A'.charCodeAt(0) + SHEET_HEADERS.length - 1);
@@ -1060,7 +1061,7 @@ async function appendRowToSheet(token, itemId, sheetName, entry){
       body: JSON.stringify({ values: [rowValues] })
     }
   );
-  if(!patchRes.ok) throw new Error('Could not write row to OneDrive sheet');
+  await assertOk(patchRes, `Writing row to "${sheetName}"`);
 }
 
 async function submitDailyReading(){
@@ -1081,6 +1082,7 @@ async function submitDailyReading(){
     await ensureSheet(token, itemData.id, sheetName);
     await appendRowToSheet(token, itemData.id, sheetName, entry);
 
+    entry.synced = true;
     // OneDrive now holds the permanent record, so keep just a small local
     // buffer (most recent 3) rather than growing this device's storage forever.
     entries[mode] = entries[mode].slice(0, 3);
@@ -1090,7 +1092,10 @@ async function submitDailyReading(){
     clearForm();
     showToast('Saved to OneDrive');
   }catch(e){
-    showToast('Saved locally — OneDrive submit failed, try again');
+    entry.synced = false;
+    await persist(mode);
+    renderEntries();
+    showToast('Saved locally only — OneDrive error: ' + (e && e.message ? e.message : 'unknown'));
   }finally{
     btn.textContent = originalText;
     btn.disabled = false;
@@ -1147,6 +1152,7 @@ function renderEntries(){
             <span class="entry-time">${e.time || ''}</span>
           </div>
           <span class="badge ${allOk ? 'good' : 'bad'}">${allOk ? 'In range' : 'Check levels'}</span>
+          <span class="sync-tag ${e.synced ? 'synced' : 'pending'}">${e.synced ? 'Synced' : 'Not synced'}</span>
         </div>
         <div class="readings">
           <div><span class="rlabel">Free Cl</span><span class="${flagClass(chlOk)}">${e.chlorine || '—'}</span></div>
@@ -1174,20 +1180,53 @@ function escapeHtml(s){
   return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
-function exportCSV(){
-  const data = entries[mode];
-  if(!data.length){ showToast('No entries to export'); return; }
-  const headers = ['Date','Time','Free Chlorine','Total Chlorine/Bromine','pH','Total Alkalinity','Total Hardness','Cyanuric Acid','Clarity %','Water Temp','Corrective Action','Comments','Sign'];
-  const rows = data.map(e => [e.date,e.time,e.chlorine,e.combined,e.ph,e.alk,e.hardness,e.cya,e.clarity,e.temp,e.action,e.comments,e.sign]
-    .map(v => `"${(v||'').toString().replace(/"/g,'""')}"`).join(','));
-  const csv = [headers.join(','), ...rows].join('\n');
-  const blob = new Blob([csv], {type:'text/csv'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `${mode}-log-${todayDate()}.csv`;
-  a.click();
-  URL.revokeObjectURL(url);
+async function pushToOneDrive(){
+  const unsynced = entries[mode].filter(e => !e.synced);
+  if(!unsynced.length){
+    showToast('Already up to date — nothing pending for ' + (mode === 'pool' ? 'Pool' : 'Spa'));
+    return;
+  }
+
+  const btn = document.getElementById('pushBtn');
+  const originalText = btn.textContent;
+  btn.textContent = 'Pushing…';
+  btn.disabled = true;
+
+  const sheetName = mode === 'pool' ? 'Pool' : 'Spa';
+  let succeeded = 0;
+  let lastError = null;
+
+  try{
+    const token = await getGraphToken();
+    const itemData = await ensureWorkbookItem(token);
+    await ensureSheet(token, itemData.id, sheetName);
+
+    // Push oldest-first so row order in the sheet matches when they happened
+    const ordered = [...unsynced].reverse();
+    for(const entry of ordered){
+      try{
+        await appendRowToSheet(token, itemData.id, sheetName, entry);
+        entry.synced = true;
+        succeeded++;
+      }catch(e){
+        lastError = e;
+        break; // stop on first failure so we don't hammer a broken connection
+      }
+    }
+  }catch(e){
+    lastError = e;
+  }
+
+  await persist(mode);
+  renderEntries();
+  btn.textContent = originalText;
+  btn.disabled = false;
+
+  if(succeeded === unsynced.length){
+    showToast(`Pushed ${succeeded} reading${succeeded === 1 ? '' : 's'} to OneDrive`);
+  }else{
+    showToast(`Pushed ${succeeded}/${unsynced.length} — error: ` + (lastError && lastError.message ? lastError.message : 'unknown'));
+  }
 }
 
 document.getElementById('fDate').value = todayDate();
