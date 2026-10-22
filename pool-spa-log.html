@@ -287,17 +287,14 @@
   }
   .guide-dot{
     position:absolute;
-    width:18px;
-    height:18px;
-    border:2px solid rgba(255,255,255,.95);
-    border-radius:4px;
-    background:rgba(255,255,255,.12);
+    width:32px;
+    height:32px;
     transform:translate(-50%,-50%);
-    box-shadow:0 0 0 2px rgba(0,0,0,.35);
   }
+  .guide-dot svg, .cal-box svg{ display:block; width:100%; height:100%; overflow:visible; }
   .guide-dot .dot-label{
     position:absolute;
-    left:26px;
+    left:38px;
     top:50%;
     transform:translateY(-50%);
     font-size:9.5px;
@@ -308,7 +305,7 @@
     border-radius:4px;
     white-space:nowrap;
   }
-  .guide-dot.pool .dot-label{ left:auto; right:26px; }
+  .guide-dot.pool .dot-label{ left:auto; right:38px; }
 
   .scan-controls{
     display:flex;
@@ -391,6 +388,61 @@
     z-index:20;
   }
   .toast.show{ opacity:1; }
+
+  .strip-bar{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    margin-top:10px; padding:8px 10px;
+    background:var(--card); border:1px solid var(--line); border-radius:10px;
+  }
+  .strip-label{ display:block; font-size:10.5px; letter-spacing:.05em; text-transform:uppercase; color:var(--ink-faint); }
+  .strip-name{ font-size:13px; font-weight:700; line-height:1.3; }
+  .strip-change{
+    flex:none; font-size:12.5px; font-weight:700; padding:7px 14px; border-radius:8px;
+    border:1px solid var(--line); background:var(--paper); color:var(--ink);
+  }
+  .sync-tag.neutral{ background:#ececec; color:var(--ink-soft); }
+  .sync-tag.warn{ background:#faeeda; color:#854f0b; }
+  .modal-back{
+    position:fixed; inset:0; background:rgba(0,0,0,.45); display:none;
+    align-items:flex-end; justify-content:center; z-index:50;
+  }
+  .modal-back.show{ display:flex; }
+  .modal{
+    background:var(--paper); width:100%; max-width:520px; max-height:88vh; overflow:auto;
+    border-radius:16px 16px 0 0; padding:16px 16px 24px;
+  }
+  .modal-head{ display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
+  .modal-head h2{ margin:0; font-size:15px; }
+  .modal-x{ background:none; border:none; font-size:20px; color:var(--ink-soft); padding:4px 8px; }
+  .profile-card{
+    background:var(--card); border:1px solid var(--line); border-radius:11px;
+    padding:10px 12px; margin-bottom:8px;
+  }
+  .profile-card.active{ border-color:var(--ink); box-shadow:0 0 0 1px var(--ink); }
+  .pc-name{ font-size:13.5px; font-weight:700; }
+  .pc-sub{ font-size:11.5px; color:var(--ink-faint); margin-top:2px; }
+  .pc-note{ font-size:11.5px; color:var(--ink-soft); margin-top:4px; line-height:1.4; }
+  .pc-actions{ display:flex; gap:6px; margin-top:8px; flex-wrap:wrap; }
+  .pc-actions button, .admin-row button, .editor-actions button{
+    font-size:12px; font-weight:700; padding:6px 11px; border-radius:8px;
+    border:1px solid var(--line); background:var(--paper); color:var(--ink);
+  }
+  .pc-actions button.primary, .editor-actions button.primary{ background:var(--ink); color:#fff; border-color:var(--ink); }
+  details.admin{ margin-top:14px; font-size:12.5px; color:var(--ink-soft); }
+  details.admin summary{ cursor:pointer; font-weight:700; }
+  .admin-row{ display:flex; gap:6px; flex-wrap:wrap; margin:10px 0; }
+  .editor{ background:var(--card); border:1px solid var(--ink-soft); border-radius:11px; padding:12px; margin-bottom:10px; }
+  .editor label{ display:block; font-size:11.5px; color:var(--ink-soft); margin:8px 0 3px; }
+  .editor textarea, #profileJson{ font-family:ui-monospace,Menlo,Consolas,monospace; font-size:11.5px; min-height:110px; }
+  .editor-actions{ display:flex; gap:6px; margin-top:10px; flex-wrap:wrap; }
+  .cal-view{ position:relative; width:100%; aspect-ratio:4/3; background:#111; border-radius:10px; overflow:hidden; margin:8px 0; }
+  .cal-view video{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+  .cal-box{
+    position:absolute; left:50%; top:50%; width:32px; height:32px;
+    transform:translate(-50%,-50%); pointer-events:none;
+  }
+  .cal-now{ display:flex; align-items:center; gap:10px; font-size:13px; font-weight:700; }
+  .cal-chip{ width:26px; height:26px; border-radius:6px; border:1px solid var(--line); flex:none; }
 </style>
 </head>
 <body>
@@ -398,6 +450,14 @@
 <header>
   <div class="site">Surfers Chalet · 6-8 Aubrey Street, Surfers Paradise</div>
   <h1>Pool &amp; spa test log</h1>
+  <div class="strip-bar">
+    <div>
+      <span class="strip-label">Test strips in use</span>
+      <span class="strip-name" id="stripName">—</span>
+      <span class="sync-tag neutral" id="stripTag"></span>
+    </div>
+    <button class="strip-change" onclick="openStripPicker()">Change</button>
+  </div>
   <div class="tabs">
     <div class="tab active spa" id="tabSpa" onclick="setMode('spa')">Spa</div>
     <div class="tab pool" id="tabPool" onclick="setMode('pool')">Pool</div>
@@ -425,7 +485,15 @@
       <li>Review readings against reference chart.</li>
       <li>Complete Clarity, Water temperature and document any Corrective Actions and Maintenance activities.</li>
     </ol>
-    <p class="hint">NOTE: pad order top to bottom: hardness, total Cl/Br, free chlorine, pH, alkalinity, CYA.</p>
+    <p class="hint" id="padOrderNote"></p>
+    <p class="hint" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+      <label for="sampleSize" style="margin:0;">Colour sample size</label>
+      <select id="sampleSize" onchange="setSampleSize(this.value)" style="width:auto; padding:4px 8px;">
+        <option value="1">3 x 3 pixels</option>
+        <option value="2" selected>5 x 5 pixels (default)</option>
+        <option value="4">9 x 9 pixels</option>
+      </select>
+    </p>
     <p class="hint" id="captureStepLabel" style="font-weight:700; color:var(--ink); display:none;"></p>
 
     <div class="scan-buttons" id="scanButtons">
@@ -552,6 +620,40 @@
 
 </main>
 
+<div class="modal-back" id="stripModal" onclick="if(event.target===this)closeStripPicker()">
+  <div class="modal">
+    <div class="modal-head"><h2>Test strips</h2><button class="modal-x" onclick="closeStripPicker()">&#10005;</button></div>
+    <div id="profileEditorHost"></div>
+    <div id="profileList"></div>
+    <details class="admin">
+      <summary>Admin: reference list</summary>
+      <p style="margin:8px 0 0; line-height:1.5;">Add brands, edit pad order or colours, or paste a full list as JSON. Colours are matched to the nearest swatch, so use the Calibrate button to capture real values from your own bottle chart.</p>
+      <div class="admin-row">
+        <button onclick="openProfileEditor('')">Add brand</button>
+        <button onclick="exportProfiles()">Export JSON</button>
+        <button onclick="importProfiles()">Import JSON</button>
+        <button onclick="resetProfiles()">Reset list</button>
+      </div>
+      <textarea id="profileJson" placeholder="Export fills this box. Paste a list here and press Import."></textarea>
+    </details>
+  </div>
+</div>
+
+<div class="modal-back" id="calModal">
+  <div class="modal">
+    <div class="modal-head"><h2 id="calTitle">Calibrate</h2><button class="modal-x" onclick="calCancel()">&#10005;</button></div>
+    <p class="hint" style="font-size:12.5px; color:var(--ink-soft); margin:0 0 6px;">Hold the bottle chart under your normal scanning light. Put the named swatch inside the square and press Capture.</p>
+    <div class="cal-view"><video id="calVideo" playsinline muted></video><div class="cal-box"></div></div>
+    <div class="cal-now"><span class="cal-chip" id="calChip"></span><span id="calLabel"></span></div>
+    <div class="editor-actions">
+      <button class="primary" onclick="calCapture()">Capture</button>
+      <button onclick="calBack()">Back</button>
+      <button onclick="calSkip()">Skip</button>
+      <button onclick="calFinish()">Finish &amp; save</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast">Saved</div>
 
 <script>
@@ -637,10 +739,395 @@ function nearestMatch(paletteKey, rgb){
 }
 
 // Known pad order, top to bottom, same for both strips
-const PAD_ORDER = ['hardness','total','chlorine','ph','alk','cya'];
+let PAD_ORDER = ['hardness','total','chlorine','ph','alk','cya'];
 const PAD_ABBR = { hardness:'HD', total:'Cl/Br', chlorine:'FCl', ph:'pH', alk:'ALK', cya:'CYA' };
-const ROW_Y = [16, 31, 46, 61, 76, 91]; // % down the frame for each of the 6 pads
+let ROW_Y = [16, 31, 46, 61, 76, 91]; // % down the frame for each of the 6 pads
 const COL_X = { spa: 28, pool: 72 };    // % across the frame — kept the same as the old side-by-side layout
+
+// ---------- Test strip profiles ----------
+const PAD_NOTE_LABEL = { hardness:'hardness', total:'total Cl/Br', chlorine:'free chlorine', ph:'pH', alk:'alkalinity', cya:'CYA' };
+const DEFAULT_PAD_ORDER = ['hardness','total','chlorine','ph','alk','cya'];
+const GENERIC_POINTS = {};
+Object.keys(PALETTES).forEach(k => { GENERIC_POINTS[k] = JSON.parse(JSON.stringify(PALETTES[k].points)); });
+const STATUS_TEXT = {
+  calibrated: ['Calibrated', 'synced'],
+  approx: ['Approximate colours', 'warn'],
+  custom: ['Custom colours', 'warn'],
+  generic: ['Generic colours - not calibrated', 'pending']
+};
+
+function mkProfile(id, name, brand, status, note){
+  return { id, name, brand, status, note: note || '', padOrder: DEFAULT_PAD_ORDER.slice(), palettes: JSON.parse(JSON.stringify(GENERIC_POINTS)) };
+}
+const DEFAULT_PROFILES = [
+  mkProfile('hyclor-7in1', 'HY-CLOR 7 in 1 Instant Pool & Spa Test Strips', 'Hy-Clor', 'generic', 'Pad order and colours unverified. Calibrate against the bottle chart, and check pad order (Edit).'),
+  mkProfile('previous-strips', 'Previous strips (chart in earlier photos)', 'Unknown', 'approx', 'Colours hand-estimated from chart photos.'),
+  mkProfile('aquachek-7in1', 'AquaChek 7-in-1 Pool & Spa Test Strips', 'AquaChek (Hach)', 'generic'),
+  mkProfile('taylor-6way', 'Taylor Technologies 6-Way Test Strips', 'Taylor Technologies', 'generic'),
+  mkProfile('clorox-6way', 'Clorox Pool&Spa 6-Way Test Strips', 'Clorox Pool&Spa', 'generic'),
+  mkProfile('poolmaster-6way', 'Poolmaster 6-Way Test Strips', 'Poolmaster', 'generic'),
+  mkProfile('lovibond', 'Lovibond (Tintometer) Pool & Spa Test Strips', 'Lovibond', 'generic'),
+  mkProfile('bayrol', 'Bayrol Pool & Spa Test Strips', 'Bayrol', 'generic'),
+  mkProfile('orenda-7way', 'Orenda 7-Way Test Strips', 'Orenda', 'generic')
+];
+
+let profiles = [];
+let activeProfileId = 'hyclor-7in1';
+
+function cloneJson(o){ return JSON.parse(JSON.stringify(o)); }
+function activeProfile(){ return profiles.find(p => p.id === activeProfileId) || profiles[0]; }
+
+function computeRowY(n){
+  if(n <= 1) return [50];
+  const out = [];
+  for(let i=0;i<n;i++) out.push(Math.round((16 + i * (75/(n-1))) * 10) / 10);
+  return out;
+}
+
+function applyProfile(){
+  const p = activeProfile();
+  if(!p) return;
+  const order = (p.padOrder || []).filter(k => PALETTES[k]);
+  PAD_ORDER = order.length ? order : DEFAULT_PAD_ORDER.slice();
+  PAD_ORDER.forEach(k => {
+    const pts = p.palettes && p.palettes[k];
+    PALETTES[k].points = (pts && pts.length) ? pts : GENERIC_POINTS[k];
+  });
+  ROW_Y = computeRowY(PAD_ORDER.length);
+  document.getElementById('stripName').textContent = p.name;
+  const st = STATUS_TEXT[p.status] || STATUS_TEXT.generic;
+  const tag = document.getElementById('stripTag');
+  tag.textContent = st[0];
+  tag.className = 'sync-tag ' + st[1];
+  document.getElementById('padOrderNote').textContent =
+    'NOTE: pad order top to bottom: ' + PAD_ORDER.map(k => PAD_NOTE_LABEL[k]).join(', ') + '.';
+  buildGuideOverlay();
+}
+
+async function saveProfiles(){
+  await storageSet('strip:profiles', JSON.stringify(profiles));
+  await storageSet('strip:active', activeProfileId);
+}
+
+async function initProfiles(){
+  profiles = cloneJson(DEFAULT_PROFILES);
+  try{
+    const r = await storageGet('strip:profiles');
+    if(r){
+      const saved = JSON.parse(r.value);
+      if(Array.isArray(saved) && saved.length){
+        profiles = saved;
+        DEFAULT_PROFILES.forEach(d => { if(!profiles.some(p => p.id === d.id)) profiles.push(cloneJson(d)); });
+      }
+    }
+  }catch(e){}
+  try{
+    const r = await storageGet('strip:active');
+    if(r && profiles.some(p => p.id === r.value)) activeProfileId = r.value;
+  }catch(e){}
+  applyProfile();
+}
+
+function openStripPicker(){
+  document.getElementById('profileEditorHost').innerHTML = '';
+  renderProfileList();
+  document.getElementById('stripModal').classList.add('show');
+}
+function closeStripPicker(){
+  document.getElementById('stripModal').classList.remove('show');
+}
+
+function renderProfileList(){
+  document.getElementById('profileList').innerHTML = profiles.map(p => {
+    const st = STATUS_TEXT[p.status] || STATUS_TEXT.generic;
+    const isActive = p.id === activeProfileId;
+    return `<div class="profile-card ${isActive ? 'active' : ''}">
+      <div class="pc-name">${escapeHtml(p.name)}</div>
+      <div class="pc-sub">${escapeHtml(p.brand || '')} &middot; <span class="sync-tag ${st[1]}" style="margin-left:0;">${st[0]}</span></div>
+      ${p.note ? `<div class="pc-note">${escapeHtml(p.note)}</div>` : ''}
+      <div class="pc-actions">
+        <button class="${isActive ? '' : 'primary'}" onclick="selectProfile('${p.id}')">${isActive ? 'In use' : 'Use these'}</button>
+        <button onclick="openProfileEditor('${p.id}')">Edit</button>
+        <button onclick="startCalibration('${p.id}')">Calibrate</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function selectProfile(id){
+  activeProfileId = id;
+  await saveProfiles();
+  resetScan();
+  applyProfile();
+  renderProfileList();
+  showToast('Now using: ' + activeProfile().name);
+  closeStripPicker();
+}
+
+function palettesToText(p){
+  return (p.padOrder || []).filter(k => PALETTES[k]).map(k =>
+    k + ': ' + ((p.palettes && p.palettes[k]) || GENERIC_POINTS[k]).map(pt => pt[0] + '=' + pt[1]).join(', ')
+  ).join('\n');
+}
+
+function parsePalettes(text){
+  const out = {};
+  text.split('\n').forEach(line => {
+    line = line.trim();
+    if(!line) return;
+    const idx = line.indexOf(':');
+    if(idx < 0) throw new Error('Missing ":" in line: ' + line);
+    const key = line.slice(0, idx).trim();
+    if(!PALETTES[key]) throw new Error('Unknown pad "' + key + '" (use: ' + Object.keys(PALETTES).join(', ') + ')');
+    const pts = line.slice(idx + 1).split(',').map(x => x.trim()).filter(Boolean).map(x => {
+      const parts = x.split('=');
+      const n = parseFloat(parts[0]);
+      const h = (parts[1] || '').trim();
+      if(isNaN(n) || !/^#[0-9a-fA-F]{6}$/.test(h)) throw new Error('Bad entry "' + x + '" in ' + key + ' (expected value=#rrggbb)');
+      return [n, h.toLowerCase()];
+    });
+    if(pts.length < 2) throw new Error(key + ' needs at least 2 colour points');
+    out[key] = pts;
+  });
+  return out;
+}
+
+function openProfileEditor(id){
+  const p = id ? profiles.find(x => x.id === id) : { id:'', name:'', brand:'', note:'', status:'custom', padOrder: DEFAULT_PAD_ORDER.slice(), palettes: cloneJson(GENERIC_POINTS) };
+  if(!p) return;
+  document.getElementById('profileEditorHost').innerHTML = `<div class="editor">
+    <strong style="font-size:13px;">${id ? 'Edit strips' : 'Add strips'}</strong>
+    <label>Product name</label><input type="text" id="edName" value="${escapeHtml(p.name)}">
+    <label>Brand</label><input type="text" id="edBrand" value="${escapeHtml(p.brand || '')}">
+    <label>Note (optional)</label><input type="text" id="edNote" value="${escapeHtml(p.note || '')}">
+    <label>Pad order, first pad to last (hardness, total, chlorine, ph, alk, cya)</label>
+    <input type="text" id="edOrder" value="${escapeHtml((p.padOrder || []).join(', '))}">
+    <label>Colours: one line per pad, value=#hex</label>
+    <textarea id="edPalettes">${escapeHtml(palettesToText(p))}</textarea>
+    <div class="editor-actions">
+      <button class="primary" onclick="saveProfileEditor('${p.id}')">Save</button>
+      <button onclick="document.getElementById('profileEditorHost').innerHTML=''">Cancel</button>
+      ${id && !DEFAULT_PROFILES.some(d => d.id === id) ? `<button onclick="deleteProfile('${p.id}')">Delete</button>` : ''}
+    </div>
+  </div>`;
+  document.getElementById('profileEditorHost').scrollIntoView({ block:'nearest' });
+}
+
+async function saveProfileEditor(id){
+  try{
+    const name = document.getElementById('edName').value.trim();
+    if(!name) throw new Error('Please enter a product name');
+    const order = document.getElementById('edOrder').value.split(',').map(x => x.trim()).filter(Boolean);
+    order.forEach(k => { if(!PALETTES[k]) throw new Error('Unknown pad "' + k + '" in pad order'); });
+    if(!order.length) throw new Error('Pad order cannot be empty');
+    const palettes = parsePalettes(document.getElementById('edPalettes').value);
+    order.forEach(k => { if(!palettes[k]) palettes[k] = cloneJson(GENERIC_POINTS[k]); });
+
+    let p = id ? profiles.find(x => x.id === id) : null;
+    const isNew = !p;
+    if(isNew){
+      p = { id: 'custom-' + Date.now().toString(36), status: 'custom' };
+      profiles.push(p);
+    }
+    const coloursChanged = JSON.stringify(p.palettes || {}) !== JSON.stringify(palettes);
+    p.name = name;
+    p.brand = document.getElementById('edBrand').value.trim();
+    p.note = document.getElementById('edNote').value.trim();
+    p.padOrder = order;
+    p.palettes = palettes;
+    if(coloursChanged && !isNew) p.status = 'custom';
+    await saveProfiles();
+    if(p.id === activeProfileId){ resetScan(); applyProfile(); }
+    document.getElementById('profileEditorHost').innerHTML = '';
+    renderProfileList();
+    showToast('Saved ' + name);
+  }catch(e){
+    showToast(e.message);
+  }
+}
+
+async function deleteProfile(id){
+  if(id === activeProfileId){ showToast('Switch to other strips before deleting these'); return; }
+  if(!confirm('Delete these strips from the list?')) return;
+  profiles = profiles.filter(p => p.id !== id);
+  await saveProfiles();
+  document.getElementById('profileEditorHost').innerHTML = '';
+  renderProfileList();
+}
+
+function exportProfiles(){
+  const box = document.getElementById('profileJson');
+  box.value = JSON.stringify(profiles, null, 1);
+  box.focus(); box.select();
+  showToast('Copy this JSON to back it up or share it');
+}
+
+async function importProfiles(){
+  try{
+    const incoming = JSON.parse(document.getElementById('profileJson').value);
+    if(!Array.isArray(incoming) || !incoming.length) throw new Error('Expected a JSON list of strip profiles');
+    incoming.forEach(p => {
+      if(!p.id || !p.name || !Array.isArray(p.padOrder) || !p.palettes) throw new Error('Each profile needs id, name, padOrder and palettes');
+      p.padOrder.forEach(k => { if(!PALETTES[k]) throw new Error('Unknown pad "' + k + '" in ' + p.name); });
+    });
+    incoming.forEach(p => {
+      const i = profiles.findIndex(x => x.id === p.id);
+      if(i >= 0) profiles[i] = p; else profiles.push(p);
+    });
+    await saveProfiles();
+    applyProfile();
+    renderProfileList();
+    showToast('Imported ' + incoming.length + ' strip profile(s)');
+  }catch(e){
+    showToast('Import failed: ' + e.message);
+  }
+}
+
+async function resetProfiles(){
+  if(!confirm('Reset the whole list to the built-in defaults? Custom brands and calibrations will be lost.')) return;
+  profiles = cloneJson(DEFAULT_PROFILES);
+  activeProfileId = 'hyclor-7in1';
+  await saveProfiles();
+  resetScan();
+  applyProfile();
+  renderProfileList();
+  showToast('List reset to defaults');
+}
+
+// ---------- Calibration: capture real swatch colours from a bottle chart ----------
+let calState = null;
+let calStream = null;
+
+// Target frame: outer square, X lines running in from the corners, stopping at an inner aiming square.
+// The inner square marks the centre of the sampled area. White line over a dark line so it shows on any colour.
+const TARGET_SVG = (() => {
+  const lines = 'M1.5 1.5L12 12M30.5 1.5L20 12M1.5 30.5L12 20M30.5 30.5L20 20';
+  const boxes = 'M1.5 1.5H30.5V30.5H1.5Z M12 12H20V20H12Z';
+  return '<svg viewBox="0 0 32 32" aria-hidden="true">' +
+    '<path d="' + lines + ' ' + boxes + '" fill="none" stroke="rgba(0,0,0,.65)" stroke-width="3.2" stroke-linejoin="round"/>' +
+    '<path d="' + lines + ' ' + boxes + '" fill="none" stroke="#fff" stroke-width="1.4" stroke-linejoin="round"/></svg>';
+})();
+
+let SAMPLE_HALF = 2;     // 2 each side of centre = 5x5 window
+const SAMPLE_FRAMES = 10; // average this many consecutive video frames
+async function loadSampleSize(){
+  try{
+    const v = await storageGet('scan:sampleHalf');
+    const n = parseInt(v && v.value, 10);
+    if([1,2,4].includes(n)) SAMPLE_HALF = n;
+  }catch(e){}
+  const sel = document.getElementById('sampleSize');
+  if(sel) sel.value = String(SAMPLE_HALF);
+}
+function setSampleSize(v){
+  const n = parseInt(v, 10);
+  if(![1,2,4].includes(n)) return;
+  SAMPLE_HALF = n;
+  try{ storageSet('scan:sampleHalf', String(n)); }catch(e){}
+}
+
+// Average a (2*half+1)^2 window at each point over several video frames. pts are fractions (0-1) of the frame.
+async function grabAverages(video, pts, half, frames){
+  const w = video.videoWidth, h = video.videoHeight;
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  const ctx = c.getContext('2d', { willReadFrequently:true });
+  const sums = pts.map(() => [0,0,0,0]);
+  for(let f = 0; f < frames; f++){
+    ctx.drawImage(video, 0, 0, w, h);
+    pts.forEach((p, i) => {
+      const x = Math.round(w * p[0]), y = Math.round(h * p[1]);
+      const sx = Math.max(0, x - half), sy = Math.max(0, y - half);
+      const sw = Math.min(half*2 + 1, w - sx), sh = Math.min(half*2 + 1, h - sy);
+      const d = ctx.getImageData(sx, sy, sw, sh).data;
+      for(let k = 0; k < d.length; k += 4){ sums[i][0]+=d[k]; sums[i][1]+=d[k+1]; sums[i][2]+=d[k+2]; sums[i][3]++; }
+    });
+    if(f < frames - 1) await new Promise(r => setTimeout(r, 40));
+  }
+  return { rgbs: sums.map(t => [Math.round(t[0]/t[3]), Math.round(t[1]/t[3]), Math.round(t[2]/t[3])]), lastFrame:c };
+}
+function rgbToHex(rgb){
+  return '#' + rgb.map(v => ('0' + v.toString(16)).slice(-2)).join('');
+}
+
+async function startCalibration(id){
+  const p = profiles.find(x => x.id === id);
+  if(!p) return;
+  const palettes = cloneJson(p.palettes || {});
+  const steps = [];
+  p.padOrder.filter(k => PALETTES[k]).forEach(k => {
+    if(!palettes[k]) palettes[k] = cloneJson(GENERIC_POINTS[k]);
+    palettes[k].forEach((pt, i) => steps.push({ key:k, i }));
+  });
+  try{
+    calStream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:'environment' } });
+  }catch(e){
+    showToast('Camera unavailable - open this page in a normal browser tab to calibrate');
+    return;
+  }
+  calState = { id, palettes, steps, pos:0, done:new Set() };
+  const v = document.getElementById('calVideo');
+  v.srcObject = calStream;
+  try{ await v.play(); }catch(e){}
+  document.getElementById('calTitle').textContent = 'Calibrate: ' + p.name;
+  closeStripPicker();
+  document.getElementById('calModal').classList.add('show');
+  renderCalStep();
+}
+
+function renderCalStep(){
+  const st = calState.steps[calState.pos];
+  const pt = calState.palettes[st.key][st.i];
+  const meta = PALETTES[st.key];
+  document.getElementById('calChip').style.background = pt[1];
+  document.getElementById('calLabel').textContent =
+    'Swatch ' + (calState.pos + 1) + ' of ' + calState.steps.length + ': ' + meta.label + ' ' + pt[0] + (meta.unit ? ' ' + meta.unit : '');
+}
+
+function calAdvance(){
+  if(calState.pos < calState.steps.length - 1){ calState.pos++; renderCalStep(); }
+  else calFinish();
+}
+let calBusy = false;
+async function calCapture(){
+  if(calBusy) return;
+  const v = document.getElementById('calVideo');
+  if(!v.videoWidth){ showToast('Camera not ready yet'); return; }
+  calBusy = true;
+  try{
+    const { rgbs } = await grabAverages(v, [[0.5, 0.5]], SAMPLE_HALF, SAMPLE_FRAMES);
+    if(!calState) return;
+    const hex = rgbToHex(rgbs[0]);
+    const st = calState.steps[calState.pos];
+    calState.palettes[st.key][st.i][1] = hex;
+    calState.done.add(calState.pos);
+    calAdvance();
+  } finally { calBusy = false; }
+}
+function calSkip(){ calAdvance(); }
+function calBack(){ if(calState.pos > 0){ calState.pos--; renderCalStep(); } }
+
+function calStop(){
+  if(calStream){ calStream.getTracks().forEach(t => t.stop()); calStream = null; }
+  document.getElementById('calModal').classList.remove('show');
+}
+function calCancel(){ calStop(); calState = null; }
+
+async function calFinish(){
+  if(!calState){ calStop(); return; }
+  const done = calState;
+  calStop();
+  calState = null;
+  const n = done.done.size;
+  if(!n){ showToast('Nothing captured - profile unchanged'); return; }
+  const p = profiles.find(x => x.id === done.id);
+  p.palettes = done.palettes;
+  p.status = n === done.steps.length ? 'calibrated' : 'custom';
+  p.note = 'Calibrated ' + todayDate() + ' (' + n + ' of ' + done.steps.length + ' swatches).';
+  await saveProfiles();
+  if(p.id === activeProfileId){ resetScan(); applyProfile(); }
+  showToast('Saved calibration for ' + p.name);
+}
+
 
 let mediaStream = null;
 let captureStep = 1; // 1 = spa (left column), 2 = pool (right column)
@@ -656,7 +1143,7 @@ function buildGuideOverlay(){
   let html = `<div class="col-label" style="left:${COL_X[side]}%;">${label}</div>`;
   PAD_ORDER.forEach((key, i)=>{
     html += `<div class="guide-dot ${side}" style="left:${COL_X[side]}%; top:${ROW_Y[i]}%;">
-               <span class="dot-label">${PAD_ABBR[key]}</span>
+               ${TARGET_SVG}<span class="dot-label">${PAD_ABBR[key]}</span>
              </div>`;
   });
   overlay.innerHTML = html;
@@ -691,25 +1178,15 @@ async function startLiveScan(){
   }
 }
 
-function sampleColumnInto(canvas, side){
-  const ctx = canvas.getContext('2d');
-  const HALF = 4; // 4 pixels each side of center = a 9x9 averaging window
+function sampleColumnInto(rgbs, side){
   PAD_ORDER.forEach((key, i)=>{
-    const x = Math.round(canvas.width * COL_X[side] / 100);
-    const y = Math.round(canvas.height * ROW_Y[i] / 100);
-    const sx = Math.max(0, x - HALF), sy = Math.max(0, y - HALF);
-    const sw = Math.min(HALF*2 + 1, canvas.width - sx), sh = Math.min(HALF*2 + 1, canvas.height - sy);
-    const imgData = ctx.getImageData(sx, sy, sw, sh);
-    let r=0,g=0,b=0,count=0;
-    for(let p=0;p<imgData.data.length;p+=4){
-      r += imgData.data[p]; g += imgData.data[p+1]; b += imgData.data[p+2]; count++;
-    }
-    r = Math.round(r/count); g = Math.round(g/count); b = Math.round(b/count);
-    pending[side][key] = nearestMatch(key, [r,g,b]);
+    pending[side][key] = nearestMatch(key, rgbs[i]);
   });
 }
 
-function captureGrid(){
+let gridBusy = false;
+async function captureGrid(){
+  if(gridBusy) return;
   const canvas = document.getElementById('stripCanvas');
   const video = document.getElementById('liveVideo');
   const side = stepSide();
@@ -718,32 +1195,36 @@ function captureGrid(){
     showToast('Camera isn\'t running — tap "Use camera" first');
     return;
   }
-
-  canvas.width = video.videoWidth;
-  canvas.height = video.videoHeight;
-  canvas.getContext('2d').drawImage(video, 0, 0);
-
-  if(!canvas.width){
+  if(!video.videoWidth){
     showToast('Nothing to capture yet');
     return;
   }
 
-  sampleColumnInto(canvas, side);
-  document.getElementById('pendingPanels').style.display = 'grid';
-  renderPending();
+  gridBusy = true;
+  try{
+    const pts = PAD_ORDER.map((k, i) => [COL_X[side] / 100, ROW_Y[i] / 100]);
+    const { rgbs, lastFrame } = await grabAverages(video, pts, SAMPLE_HALF, SAMPLE_FRAMES);
+    canvas.width = lastFrame.width;
+    canvas.height = lastFrame.height;
+    canvas.getContext('2d').drawImage(lastFrame, 0, 0);
 
-  if(captureStep === 1){
-    captureStep = 2;
-    updateCaptureUI();
-    showToast('Spa captured — now align the pool strip');
-  }else{
-    stopStream();
-    document.getElementById('guideWrap').classList.remove('show');
-    document.getElementById('scanControls').style.display = 'none';
-    document.getElementById('captureStepLabel').style.display = 'none';
-    captureStep = 1;
-    showToast('Both strips captured — check panels before filling');
-  }
+    sampleColumnInto(rgbs, side);
+    document.getElementById('pendingPanels').style.display = 'grid';
+    renderPending();
+
+    if(captureStep === 1){
+      captureStep = 2;
+      updateCaptureUI();
+      showToast('Spa captured — now align the pool strip');
+    }else{
+      stopStream();
+      document.getElementById('guideWrap').classList.remove('show');
+      document.getElementById('scanControls').style.display = 'none';
+      document.getElementById('captureStepLabel').style.display = 'none';
+      captureStep = 1;
+      showToast('Both strips captured — check panels before filling');
+    }
+  } finally { gridBusy = false; }
 }
 
 function stopStream(){
@@ -896,7 +1377,8 @@ function buildEntryFromForm(){
     temp: document.getElementById('fTemp').value,
     action: document.getElementById('fAction').value.trim(),
     comments: document.getElementById('fComments').value.trim(),
-    sign: sign
+    sign: sign,
+    strips: activeProfile() ? activeProfile().name : ''
   };
 }
 
@@ -918,7 +1400,7 @@ const MSAL_CONFIG = {
 };
 const GRAPH_SCOPES = ['Files.ReadWrite', 'User.Read'];
 const WORKBOOK_PATH = 'pool-spa-daily-log.xlsx';
-const SHEET_HEADERS = ['Date','Time','Free Chlorine','Total Chlorine/Bromine','pH','Total Alkalinity','Total Hardness','Cyanuric Acid','Clarity %','Water Temp','Corrective Action','Comments','Sign'];
+const SHEET_HEADERS = ['Date','Time','Free Chlorine','Total Chlorine/Bromine','pH','Total Alkalinity','Total Hardness','Cyanuric Acid','Clarity %','Water Temp','Corrective Action','Comments','Sign','Test Strips'];
 
 let msalInstance = null;
 if(window.msal){
@@ -1010,12 +1492,31 @@ async function ensureWorkbookItem(token){
   return await res.json();
 }
 
+async function ensureStripsHeader(token, itemId, sheetName){
+  // Older sheets were created before the "Test Strips" column existed; add its header if missing.
+  try{
+    const lastCol = String.fromCharCode('A'.charCodeAt(0) + SHEET_HEADERS.length - 1);
+    const base = `https://graph.microsoft.com/v1.0/me/drive/items/${itemId}/workbook/worksheets('${sheetName}')/range(address='${lastCol}1')`;
+    const r = await graphFetch(base, token);
+    if(!r.ok) return;
+    const d = await r.json();
+    const cur = d.values && d.values[0] && d.values[0][0];
+    if(!cur){
+      await graphFetch(base, token, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ values: [[SHEET_HEADERS[SHEET_HEADERS.length - 1]]] })
+      });
+    }
+  }catch(e){ /* non-fatal */ }
+}
+
 async function ensureSheet(token, itemId, sheetName){
   const wsRes = await graphFetch(`https://graph.microsoft.com/v1.0/me/drive/items/${itemId}/workbook/worksheets`, token);
   await assertOk(wsRes, 'Listing worksheets');
   const wsData = await wsRes.json();
   const names = (wsData.value || []).map(w => w.name);
-  if(names.includes(sheetName)) return;
+  if(names.includes(sheetName)){ await ensureStripsHeader(token, itemId, sheetName); return; }
 
   const addRes = await graphFetch(`https://graph.microsoft.com/v1.0/me/drive/items/${itemId}/workbook/worksheets/add`, token, {
     method: 'POST',
@@ -1040,7 +1541,7 @@ async function ensureSheet(token, itemId, sheetName){
 async function appendRowToSheet(token, itemId, sheetName, entry){
   const rowValues = [
     entry.date, entry.time, entry.chlorine, entry.combined, entry.ph, entry.alk,
-    entry.hardness, entry.cya, entry.clarity, entry.temp, entry.action, entry.comments, entry.sign
+    entry.hardness, entry.cya, entry.clarity, entry.temp, entry.action, entry.comments, entry.sign, entry.strips
   ].map(v => v === undefined || v === null ? '' : v);
 
   const usedRes = await graphFetch(
@@ -1168,6 +1669,7 @@ function renderEntries(){
         ${e.action ? `<div class="entry-note"><strong>Action taken:</strong> ${escapeHtml(e.action)}</div>` : ''}
         ${e.comments ? `<div class="entry-note"><strong>Notes:</strong> ${escapeHtml(e.comments)}</div>` : ''}
         <div class="entry-note">Signed: ${escapeHtml(e.sign)}</div>
+        ${e.strips ? `<div class="entry-note">Strips: ${escapeHtml(e.strips)}</div>` : ''}
         <div class="entry-actions">
           <button onclick="deleteEntry('${mode}','${e.id}')"><i class="ti"></i>Delete</button>
         </div>
@@ -1232,6 +1734,9 @@ async function pushToOneDrive(){
 document.getElementById('fDate').value = todayDate();
 document.getElementById('fTime').value = nowTime();
 setMode('spa');
+initProfiles();
+loadSampleSize();
+(function(){ const cb = document.querySelector('.cal-box'); if(cb) cb.innerHTML = TARGET_SVG; })();
 loadEntries();
 </script>
 
