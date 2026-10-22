@@ -441,6 +441,9 @@
     position:absolute; left:50%; top:50%; width:32px; height:32px;
     transform:translate(-50%,-50%); pointer-events:none;
   }
+  .cal-order-row{ display:flex; align-items:center; gap:10px; margin:6px 0; }
+  .cal-order-row label{ margin:0; width:74px; font-size:12.5px; font-weight:700; flex:none; }
+  .cal-order-row select{ flex:1; }
   .cal-now{ display:flex; align-items:center; gap:10px; font-size:13px; font-weight:700; }
   .cal-chip{ width:26px; height:26px; border-radius:6px; border:1px solid var(--line); flex:none; }
 </style>
@@ -642,14 +645,26 @@
 <div class="modal-back" id="calModal">
   <div class="modal">
     <div class="modal-head"><h2 id="calTitle">Calibrate</h2><button class="modal-x" onclick="calCancel()">&#10005;</button></div>
-    <p class="hint" style="font-size:12.5px; color:var(--ink-soft); margin:0 0 6px;">Hold the bottle chart under your normal scanning light. Put the named swatch inside the square and press Capture.</p>
-    <div class="cal-view"><video id="calVideo" playsinline muted></video><div class="cal-box"></div></div>
-    <div class="cal-now"><span class="cal-chip" id="calChip"></span><span id="calLabel"></span></div>
-    <div class="editor-actions">
-      <button class="primary" onclick="calCapture()">Capture</button>
-      <button onclick="calBack()">Back</button>
-      <button onclick="calSkip()">Skip</button>
-      <button onclick="calFinish()">Finish &amp; save</button>
+
+    <div id="calOrderPane">
+      <p class="hint" style="font-size:12.5px; color:var(--ink-soft); margin:0 0 8px;">Which test is on each pad? Check the bottle chart, then choose the test for each pad. Pad 1 is the top pad when you scan.</p>
+      <div id="calOrderRows"></div>
+      <div class="editor-actions">
+        <button class="primary" onclick="calStartCapture()">Start calibration</button>
+        <button onclick="calCancel()">Cancel</button>
+      </div>
+    </div>
+
+    <div id="calCapturePane" style="display:none;">
+      <p class="hint" style="font-size:12.5px; color:var(--ink-soft); margin:0 0 6px;">Hold the bottle chart under your normal scanning light. Put the named swatch inside the square and press Capture.</p>
+      <div class="cal-view"><video id="calVideo" playsinline muted></video><div class="cal-box"></div></div>
+      <div class="cal-now"><span class="cal-chip" id="calChip"></span><span id="calLabel"></span></div>
+      <div class="editor-actions">
+        <button class="primary" onclick="calCapture()">Capture</button>
+        <button onclick="calBack()">Back</button>
+        <button onclick="calSkip()">Skip</button>
+        <button onclick="calFinish()">Finish &amp; save</button>
+      </div>
     </div>
   </div>
 </div>
@@ -757,10 +772,11 @@ const STATUS_TEXT = {
 };
 
 function mkProfile(id, name, brand, status, note){
-  return { id, name, brand, status, note: note || '', padOrder: DEFAULT_PAD_ORDER.slice(), palettes: JSON.parse(JSON.stringify(GENERIC_POINTS)) };
+  return { id, name, brand, status, note: note || '', padOrder: (id === 'hyclor-7in1' ? HYCLOR_PAD_ORDER : DEFAULT_PAD_ORDER).slice(), palettes: JSON.parse(JSON.stringify(GENERIC_POINTS)) };
 }
+const HYCLOR_PAD_ORDER = ['chlorine','total','alk','ph','hardness','cya'];
 const DEFAULT_PROFILES = [
-  mkProfile('hyclor-7in1', 'HY-CLOR 7 in 1 Instant Pool & Spa Test Strips', 'Hy-Clor', 'generic', 'Pad order and colours unverified. Calibrate against the bottle chart, and check pad order (Edit).'),
+  mkProfile('hyclor-7in1', 'HY-CLOR 7 in 1 Instant Pool & Spa Test Strips', 'Hy-Clor', 'generic', 'Hy-Clor says to read from the end pad (free chlorine or bromine) to cyanuric acid. The middle order follows their feature list and is not confirmed. Hy-Clor publishes no colour values, so calibrate against the bottle chart.'),
   mkProfile('previous-strips', 'Previous strips (chart in earlier photos)', 'Unknown', 'approx', 'Colours hand-estimated from chart photos.'),
   mkProfile('aquachek-7in1', 'AquaChek 7-in-1 Pool & Spa Test Strips', 'AquaChek (Hach)', 'generic'),
   mkProfile('taylor-6way', 'Taylor Technologies 6-Way Test Strips', 'Taylor Technologies', 'generic'),
@@ -818,6 +834,12 @@ async function initProfiles(){
       if(Array.isArray(saved) && saved.length){
         profiles = saved;
         DEFAULT_PROFILES.forEach(d => { if(!profiles.some(p => p.id === d.id)) profiles.push(cloneJson(d)); });
+        // Move an untouched HY-CLOR profile to the supplier-listed pad order
+        const hy = profiles.find(p => p.id === 'hyclor-7in1');
+        if(hy && hy.status === 'generic' && (hy.padOrder || []).join() === DEFAULT_PAD_ORDER.join()){
+          const d = DEFAULT_PROFILES.find(x => x.id === 'hyclor-7in1');
+          hy.padOrder = d.padOrder.slice(); hy.note = d.note;
+        }
       }
     }
   }catch(e){}
@@ -1053,24 +1075,51 @@ async function startCalibration(id){
   const p = profiles.find(x => x.id === id);
   if(!p) return;
   const palettes = cloneJson(p.palettes || {});
-  const steps = [];
-  p.padOrder.filter(k => PALETTES[k]).forEach(k => {
-    if(!palettes[k]) palettes[k] = cloneJson(GENERIC_POINTS[k]);
-    palettes[k].forEach((pt, i) => steps.push({ key:k, i }));
-  });
+  const order = p.padOrder.filter(k => PALETTES[k]);
+  order.forEach(k => { if(!palettes[k]) palettes[k] = cloneJson(GENERIC_POINTS[k]); });
   try{
     calStream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:'environment' } });
   }catch(e){
     showToast('Camera unavailable - open this page in a normal browser tab to calibrate');
     return;
   }
-  calState = { id, palettes, steps, pos:0, done:new Set() };
+  calState = { id, palettes, order, steps:[], pos:0, done:new Set() };
   const v = document.getElementById('calVideo');
   v.srcObject = calStream;
   try{ await v.play(); }catch(e){}
   document.getElementById('calTitle').textContent = 'Calibrate: ' + p.name;
   closeStripPicker();
+  renderCalOrder();
+  document.getElementById('calOrderPane').style.display = '';
+  document.getElementById('calCapturePane').style.display = 'none';
   document.getElementById('calModal').classList.add('show');
+}
+
+function renderCalOrder(){
+  const keys = Object.keys(PALETTES);
+  const rows = calState.order.map((cur, i) =>
+    '<div class="cal-order-row"><label>Pad ' + (i+1) + (i === 0 ? ' (top)' : '') + '</label>' +
+    '<select data-pad="' + i + '" onchange="calOrderChange(' + i + ', this.value)">' +
+    keys.map(k => '<option value="' + k + '"' + (k === cur ? ' selected' : '') + '>' + escapeHtml(PALETTES[k].label) + '</option>').join('') +
+    '</select></div>').join('');
+  document.getElementById('calOrderRows').innerHTML = rows;
+}
+function calOrderChange(i, val){
+  const o = calState.order;
+  const j = o.indexOf(val);
+  if(j >= 0 && j !== i){ o[j] = o[i]; }   // swap so each test appears once
+  o[i] = val;
+  renderCalOrder();
+}
+function calStartCapture(){
+  const steps = [];
+  calState.order.forEach(k => {
+    if(!calState.palettes[k]) calState.palettes[k] = cloneJson(GENERIC_POINTS[k]);
+    calState.palettes[k].forEach((pt, i) => steps.push({ key:k, i }));
+  });
+  calState.steps = steps; calState.pos = 0; calState.done = new Set();
+  document.getElementById('calOrderPane').style.display = 'none';
+  document.getElementById('calCapturePane').style.display = '';
   renderCalStep();
 }
 
@@ -1091,6 +1140,7 @@ let calBusy = false;
 async function calCapture(){
   if(calBusy) return;
   const v = document.getElementById('calVideo');
+  if(!calState || !calState.steps.length) return;
   if(!v.videoWidth){ showToast('Camera not ready yet'); return; }
   calBusy = true;
   try{
@@ -1118,9 +1168,10 @@ async function calFinish(){
   calStop();
   calState = null;
   const n = done.done.size;
-  if(!n){ showToast('Nothing captured - profile unchanged'); return; }
+  if(!done.steps.length || !n){ showToast('Nothing captured - profile unchanged'); return; }
   const p = profiles.find(x => x.id === done.id);
   p.palettes = done.palettes;
+  p.padOrder = done.order.slice();
   p.status = n === done.steps.length ? 'calibrated' : 'custom';
   p.note = 'Calibrated ' + todayDate() + ' (' + n + ' of ' + done.steps.length + ' swatches).';
   await saveProfiles();
